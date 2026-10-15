@@ -11,7 +11,7 @@ return new class extends Migration
     {
         Schema::create('screens', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
+            $table->string('name',191)->unique();
             $table->unsignedSmallInteger('total_rows');
             $table->unsignedSmallInteger('seats_per_row');
             $table->timestamps();

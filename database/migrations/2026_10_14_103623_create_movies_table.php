@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('movies', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->string('slug')->unique();
+            $table->string('slug', 191)->unique();
             $table->text('synopsis');
             $table->unsignedSmallInteger('duration_minutes');
             $table->string('rating', 20)->nullable();
