@@ -14,24 +14,31 @@ class ScreenController extends Controller
 {
     public function index()
     {
-        return view('admin.screens.index', [
-            'screens' => Screen::withCount('seats')->orderBy('name')->get(),
-        ]);
-    }
+        $screens = Screen::query()
+            ->withCount([
+                'seats',
+                'seats as disabled_seats_count' => fn($q) => $q->where('is_disabled', true),
+                'seats as premium_seats_count' => fn($q) => $q->where('type', 'premium'),
+                'showtimes',
+            ])
+            ->orderBy('name')
+            ->get();
 
+        return view('admin.screens.index', compact('screens'));
+    }
     public function create()
     {
         return view('admin.screens.create');
     }
 
-   public function store(StoreScreenRequest $request, GenerateSeatsAction $generate)
-{
-    $screen = Screen::create($request->safe()->only(['name', 'total_rows', 'seats_per_row']));
-    $generate->execute($screen, $request->premiumRows());
+    public function store(StoreScreenRequest $request, GenerateSeatsAction $generate)
+    {
+        $screen = Screen::create($request->safe()->only(['name', 'total_rows', 'seats_per_row']));
+        $generate->execute($screen, $request->premiumRows());
 
-    return redirect()->route('admin.screens.show', $screen)
-        ->with('status', 'Screen created and seats generated.');
-}
+        return redirect()->route('admin.screens.show', $screen)
+            ->with('status', 'Screen created and seats generated.');
+    }
 
     public function show(Screen $screen)
     {
@@ -75,16 +82,16 @@ class ScreenController extends Controller
 
         $inUse = ShowtimeSeat::where('seat_id', $seat->id)
             ->where('status', '!=', 'available')
-            ->whereHas('showtime', fn ($q) => $q
+            ->whereHas('showtime', fn($q) => $q
                 ->where('status', 'scheduled')
                 ->where('starts_at', '>', now()))
             ->exists();
 
-        if (! $seat->is_disabled && $inUse) {
+        if (!$seat->is_disabled && $inUse) {
             return back()->withErrors('This seat is held or sold for an upcoming showtime and cannot be disabled.');
         }
 
-        $seat->update(['is_disabled' => ! $seat->is_disabled]);
+        $seat->update(['is_disabled' => !$seat->is_disabled]);
 
         return back();
     }
