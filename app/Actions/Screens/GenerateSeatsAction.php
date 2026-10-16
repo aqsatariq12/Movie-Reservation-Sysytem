@@ -7,24 +7,28 @@ use Illuminate\Support\Facades\DB;
 
 class GenerateSeatsAction
 {
-    public function execute(Screen $screen): int
+    /**
+     * @param  array<int, string>  $premiumRows  e.g. ['G', 'H']
+     */
+    public function execute(Screen $screen, array $premiumRows = []): int
     {
-        return DB::transaction(function () use ($screen) {
+        return DB::transaction(function () use ($screen, $premiumRows) {
             $now = now();
             $rows = [];
 
             for ($r = 0; $r < $screen->total_rows; $r++) {
-                $label = $this->rowLabel($r);
+                $label = self::rowLabel($r);
+                $type = in_array($label, $premiumRows, true) ? 'premium' : 'standard';
 
                 for ($n = 1; $n <= $screen->seats_per_row; $n++) {
                     $rows[] = [
-                        'screen_id'   => $screen->id,
-                        'row_label'   => $label,
+                        'screen_id' => $screen->id,
+                        'row_label' => $label,
                         'seat_number' => $n,
-                        'type'        => 'standard',
+                        'type' => $type,
                         'is_disabled' => false,
-                        'created_at'  => $now,
-                        'updated_at'  => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
                     ];
                 }
             }
@@ -35,7 +39,7 @@ class GenerateSeatsAction
         });
     }
 
-    private function rowLabel(int $index): string
+    public static function rowLabel(int $index): string
     {
         $label = '';
         $index++;

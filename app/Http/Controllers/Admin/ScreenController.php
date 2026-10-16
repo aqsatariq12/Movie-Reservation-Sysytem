@@ -24,14 +24,14 @@ class ScreenController extends Controller
         return view('admin.screens.create');
     }
 
-    public function store(StoreScreenRequest $request, GenerateSeatsAction $generate)
-    {
-        $screen = Screen::create($request->validated());
-        $generate->execute($screen);
+   public function store(StoreScreenRequest $request, GenerateSeatsAction $generate)
+{
+    $screen = Screen::create($request->safe()->only(['name', 'total_rows', 'seats_per_row']));
+    $generate->execute($screen, $request->premiumRows());
 
-        return redirect()->route('admin.screens.show', $screen)
-            ->with('status', 'Screen created and seats generated.');
-    }
+    return redirect()->route('admin.screens.show', $screen)
+        ->with('status', 'Screen created and seats generated.');
+}
 
     public function show(Screen $screen)
     {
