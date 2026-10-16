@@ -1,8 +1,9 @@
 {{--
     Labelled text field (Figma "Labeled field"). Shows Laravel validation errors
     for the field underneath, and a blue focus outline.
-    Props: name, label, type, value, autocomplete. Any other attribute
-    (required, autofocus, ...) is passed to the input.
+    Props: name, label, type, value, autocomplete, hint (small help text shown
+    inside the card, under the input). Any other attribute (required,
+    autofocus, passwordrules, ...) is passed to the input.
 --}}
 @props([
     'name',
@@ -10,6 +11,7 @@
     'type' => 'text',
     'value' => null,
     'autocomplete' => null,
+    'hint' => null,
 ])
 
 @php($hasError = $errors->has($name))
@@ -29,6 +31,10 @@
             @if ($autocomplete) autocomplete="{{ $autocomplete }}" @endif
             {{ $attributes->class('block w-full bg-transparent text-[14px] leading-[1.7] text-cb-ink outline-none placeholder:text-cb-faint') }}
         >
+
+        @if ($hint)
+            <span class="block text-[13px] leading-[1.7] text-cb-muted">{{ $hint }}</span>
+        @endif
     </label>
 
     @error($name)

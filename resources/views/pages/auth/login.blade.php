@@ -56,13 +56,11 @@
         </x-cinebook.submit-button>
     </form>
 
-    <div class="text-[14px] leading-[1.6] text-cb-muted">
+    <x-cinebook.auth-footer>
         @if (Route::has('register'))
             <p>
                 <a href="{{ route('register') }}" class="hover:text-cb-brand">New to CineBook? Create a customer account →</a>
             </p>
         @endif
-
-        <p class="mt-[22px]">CineBook Downtown · Secure account access. Reservations use Stripe hosted Checkout in test mode.</p>
-    </div>
+    </x-cinebook.auth-footer>
 </x-layouts.cinebook-auth>
