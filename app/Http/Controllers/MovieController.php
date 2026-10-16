@@ -15,4 +15,19 @@ class MovieController extends Controller
 
         return view('movies.index', compact('movies'));
     }
+
+    public function show(Movie $movie): View
+    {
+        $movie->load([
+            'genres',
+            'showtimes' => function ($query) {
+                $query->with('screen')
+                    ->scheduled()
+                    ->upcoming()
+                    ->orderBy('starts_at');
+            },
+        ]);
+
+        return view('movies.show', compact('movie'));
+    }
 }
