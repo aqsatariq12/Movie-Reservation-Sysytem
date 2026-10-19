@@ -15,7 +15,7 @@ Route::get('/movies/{movie}', [MovieController::class, 'show'])
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
     Route::get('/my-bookings', [BookingController::class, 'index'])->name('bookings.index');
-    // next screen: Route::get('/my-bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
+    Route::get('/my-bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 
 });
 

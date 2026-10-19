@@ -36,22 +36,38 @@
         return $label;
     };
 
+    // $accessLink = function ($booking) {
+    //     if ($booking->status === 'confirmed') {
+    //         return ['Tickets →', route('bookings.index', $booking)];
+    //     }
+    //     if ($booking->status === 'pending_payment') {
+    //         // Route is owned by Member B (checkout). Falls back to details until it exists.
+    //         return [
+    //             'Resume →',
+    //             \Illuminate\Support\Facades\Route::has('checkout.show')
+    //             ? route('checkout.show', $booking)
+    //             : route('bookings.index', $booking)
+    //         ];
+    //     }
+    //     return ['Details →', route('bookings.index', $booking)];
+    // };
+
     $accessLink = function ($booking) {
-        if ($booking->status === 'confirmed') {
-            return ['Tickets →', route('bookings.index', $booking)];
+        $status = $booking->status instanceof \BackedEnum ? $booking->status->value : (string) $booking->status;
+
+        if ($status === 'confirmed') {
+            return ['Tickets →', route('bookings.show', $booking) . '#tickets'];
         }
-        if ($booking->status === 'pending_payment') {
-            // Route is owned by Member B (checkout). Falls back to details until it exists.
+        if ($status === 'pending_payment') {
             return [
                 'Resume →',
                 \Illuminate\Support\Facades\Route::has('checkout.show')
                 ? route('checkout.show', $booking)
-                : route('bookings.index', $booking)
+                : route('bookings.show', $booking),
             ];
         }
-        return ['Details →', route('bookings.index', $booking)];
+        return ['Details →', route('bookings.show', $booking)];
     };
-
     $tabs = [
         'upcoming' => ['Upcoming', $counts['upcoming']],
         'past' => ['Past', $counts['past']],
@@ -122,12 +138,12 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-4">
-                                <a href="{{ route('bookings.index') }}"
+                                <a href="{{ route('bookings.show', $featured) . '#tickets' }}"
                                     class="rounded-xl border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:bg-[#2a68dc]">
                                     View tickets →
                                 </a>
 
-                                <a href="{{ route('bookings.index') }}"
+                                <a href="{{ route('bookings.show', $featured) }}"
                                     class="rounded-xl border border-[#e3d8c8] bg-white px-5 py-[13px] text-sm text-[#1f2937] hover:bg-[#f7f4ee]">
                                     Booking details
                                 </a>
