@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\DB;
 class GenerateSeatsAction
 {
     /**
-     * @param  array<int, string>  $premiumRows  e.g. ['G', 'H']
+     * @param  array<int, string>  $premiumRows    e.g. ['G', 'H']
+     * @param  array<int, string>  $disabledSeats  e.g. ['C2', 'C3', 'F12']
      */
-    public function execute(Screen $screen, array $premiumRows = []): int
+    public function execute(Screen $screen, array $premiumRows = [], array $disabledSeats = []): int
     {
-        return DB::transaction(function () use ($screen, $premiumRows) {
+        return DB::transaction(function () use ($screen, $premiumRows, $disabledSeats) {
             $now = now();
             $rows = [];
 
@@ -26,7 +27,7 @@ class GenerateSeatsAction
                         'row_label' => $label,
                         'seat_number' => $n,
                         'type' => $type,
-                        'is_disabled' => false,
+                        'is_disabled' => in_array($label . $n, $disabledSeats, true),
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
