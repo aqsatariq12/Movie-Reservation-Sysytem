@@ -1,54 +1,95 @@
-<x-layouts::auth :title="__('Reset password')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Reset password')" :description="__('Please enter your new password below')" />
+<x-layouts.cinebook-auth
+    :title="__('Reset Password')"
+    heading="Create a new password"
+    description="Choose a strong password to keep your CineBook account secure."
+>
+    {{-- Password reset status --}}
+    @if (session('status'))
+        <x-cinebook.notice role="status">
+            {{ session('status') }}
+        </x-cinebook.notice>
+    @endif
 
-        <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+    {{-- Validation errors --}}
+    @if ($errors->any())
+        <x-cinebook.notice role="alert">
+            <p class="font-medium">Please check the following:</p>
 
-        <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-6">
-            @csrf
-            <!-- Token -->
-            <input type="hidden" name="token" value="{{ request()->route('token') }}">
+            <ul class="mt-2 list-disc pl-5">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </x-cinebook.notice>
+    @endif
 
-            <!-- Email Address -->
-            <flux:input
-                name="email"
-                value="{{ request('email') }}"
-                :label="__('Email')"
-                type="email"
-                required
-                autocomplete="email"
-            />
+    {{-- Reset password form --}}
+    <form
+        method="POST"
+        action="{{ route('password.update') }}"
+        class="flex flex-col gap-6"
+    >
+        @csrf
 
-            <!-- Password -->
-            <flux:input
-                name="password"
-                :label="__('Password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                :placeholder="__('Password')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
+        {{-- Reset token --}}
+        <input
+            type="hidden"
+            name="token"
+            value="{{ request()->route('token') }}"
+        >
 
-            <!-- Confirm Password -->
-            <flux:input
-                name="password_confirmation"
-                :label="__('Confirm password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                :placeholder="__('Confirm password')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
+        {{-- Email address --}}
+        <x-cinebook.field
+            name="email"
+            label="Email address"
+            type="email"
+            :value="old('email', request('email'))"
+            autocomplete="email"
+            required
+            autofocus
+        />
 
-            <div class="flex items-center justify-end">
-                <flux:button type="submit" variant="primary" class="w-full" data-test="reset-password-button">
-                    {{ __('Reset password') }}
-                </flux:button>
-            </div>
-        </form>
-    </div>
-</x-layouts::auth>
+        {{-- New password --}}
+        <x-cinebook.field
+            name="password"
+            label="New password"
+            type="password"
+            autocomplete="new-password"
+            required
+        />
+
+        {{-- Confirm password --}}
+        <x-cinebook.field
+            name="password_confirmation"
+            label="Confirm new password"
+            type="password"
+            autocomplete="new-password"
+            required
+        />
+
+        {{-- Submit button --}}
+        <x-cinebook.submit-button>
+            Reset password →
+        </x-cinebook.submit-button>
+    </form>
+
+    {{-- Footer --}}
+    <x-cinebook.auth-footer>
+        <p>
+            <a
+                href="{{ route('login') }}"
+                class="font-medium text-cb-brand hover:underline"
+            >
+                ← Back to sign in
+            </a>
+        </p>
+
+        <p class="text-[13px] leading-[1.7] text-cb-muted">
+            Your existing bookings and tickets won't be changed.
+        </p>
+
+        <p class="text-[13px] leading-[1.7] text-cb-muted">
+            CineBook Downtown · Secure account access.
+        </p>
+    </x-cinebook.auth-footer>
+</x-layouts.cinebook-auth>
