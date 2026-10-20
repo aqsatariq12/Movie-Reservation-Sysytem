@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Screens\GenerateSeatsAction;
+use App\Actions\Screens\SyncDisabledSeatsAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreScreenRequest;
+use App\Http\Requests\Admin\SyncSeatsRequest;
 use App\Http\Requests\Admin\UpdateScreenRequest;
 use App\Models\Screen;
-use App\Models\Seat;
-use App\Models\ShowtimeSeat;
 
 class ScreenController extends Controller
 {
@@ -17,8 +17,8 @@ class ScreenController extends Controller
         $screens = Screen::query()
             ->withCount([
                 'seats',
-                'seats as disabled_seats_count' => fn($q) => $q->where('is_disabled', true),
-                'seats as premium_seats_count' => fn($q) => $q->where('type', 'premium'),
+                'seats as disabled_seats_count' => fn ($q) => $q->where('is_disabled', true),
+                'seats as premium_seats_count' => fn ($q) => $q->where('type', 'premium'),
                 'showtimes',
             ])
             ->orderBy('name')
@@ -26,6 +26,7 @@ class ScreenController extends Controller
 
         return view('admin.screens.index', compact('screens'));
     }
+
     public function create()
     {
         return view('admin.screens.create');
@@ -34,7 +35,7 @@ class ScreenController extends Controller
     public function store(StoreScreenRequest $request, GenerateSeatsAction $generate)
     {
         $screen = Screen::create($request->safe()->only(['name', 'total_rows', 'seats_per_row']));
-        $generate->execute($screen, $request->premiumRows());
+        $generate->execute($screen, $request->premiumRows(), $request->disabledSeats());
 
         return redirect()->route('admin.screens.show', $screen)
             ->with('status', 'Screen created and seats generated.');
@@ -42,18 +43,22 @@ class ScreenController extends Controller
 
     public function show(Screen $screen)
     {
+        $screen->loadCount([
+            'seats',
+            'showtimes',
+            'seats as disabled_seats_count' => fn ($q) => $q->where('is_disabled', true),
+            'seats as premium_seats_count' => fn ($q) => $q->where('type', 'premium'),
+        ]);
+
         $seats = $screen->seats()
             ->orderBy('row_label')
             ->orderBy('seat_number')
             ->get()
             ->groupBy('row_label');
 
-        return view('admin.screens.show', compact('screen', 'seats'));
-    }
+        $reserved = $screen->reservedSeats();
 
-    public function edit(Screen $screen)
-    {
-        return view('admin.screens.edit', compact('screen'));
+        return view('admin.screens.show', compact('screen', 'seats', 'reserved'));
     }
 
     public function update(UpdateScreenRequest $request, Screen $screen)
@@ -76,23 +81,11 @@ class ScreenController extends Controller
             ->with('status', 'Screen deleted.');
     }
 
-    public function toggleSeat(Screen $screen, Seat $seat)
+    public function syncSeats(SyncSeatsRequest $request, Screen $screen, SyncDisabledSeatsAction $sync)
     {
-        abort_unless($seat->screen_id === $screen->id, 404);
+        $sync->execute($screen, $request->disabledSeats());
 
-        $inUse = ShowtimeSeat::where('seat_id', $seat->id)
-            ->where('status', '!=', 'available')
-            ->whereHas('showtime', fn($q) => $q
-                ->where('status', 'scheduled')
-                ->where('starts_at', '>', now()))
-            ->exists();
-
-        if (!$seat->is_disabled && $inUse) {
-            return back()->withErrors('This seat is held or sold for an upcoming showtime and cannot be disabled.');
-        }
-
-        $seat->update(['is_disabled' => !$seat->is_disabled]);
-
-        return back();
+        return redirect()->route('admin.screens.show', $screen)
+            ->with('status', 'Seat changes saved.');
     }
 }
