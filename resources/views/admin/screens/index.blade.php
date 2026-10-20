@@ -1,100 +1,81 @@
-<x-layouts::app :title="__('Screens')">
-    <div class="flex flex-col gap-6 p-6">
-
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-blue-400">Programming</p>
-                <h1 class="text-3xl font-semibold">Your auditoriums</h1>
-                <p class="mt-2 text-sm text-zinc-400">
-                    {{ $screens->count() }} {{ \Illuminate\Support\Str::plural('screen', $screens->count()) }}.
-                    Manage layout, Premium rows and disabled seats.
-                </p>
-            </div>
-            <a href="{{ route('admin.screens.create') }}"
-                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
-                + Create screen
-            </a>
+<x-layouts::admin :title="__('Screens')">
+    <div class="flex items-center gap-6">
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold uppercase leading-[1.5] text-[#87beff]">Cinebook Downtown / Programming</p>
+            <h1 class="text-[32px] font-bold leading-[1.5] text-[#f4f7ff]">Your auditoriums</h1>
         </div>
+        <a href="{{ route('admin.screens.create') }}"
+            class="shrink-0 rounded-lg border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:bg-[#4a8bff]">
+            + Create screen
+        </a>
+    </div>
 
-        @if (session('status'))
-            <div class="rounded-lg border border-green-700 bg-green-900/40 p-3 text-sm text-green-200">
-                {{ session('status') }}
-            </div>
-        @endif
+    <p class="text-base leading-[1.45] text-[#a0aec5]">
+        {{ $screens->count() }} {{ \Illuminate\Support\Str::plural('screen', $screens->count()) }} at CineBook Downtown.
+        Manage layout, Premium rows and disabled seats.
+    </p>
 
-        @if ($errors->any())
-            <div class="rounded-lg border border-red-700 bg-red-900/40 p-3 text-sm text-red-200">
-                @foreach ($errors->all() as $error)
-                    <p>{{ $error }}</p>
-                @endforeach
-            </div>
-        @endif
+    @if (session('status'))
+        <div class="rounded-lg border border-green-700 bg-green-900/40 p-4 text-sm text-green-200">
+            {{ session('status') }}
+        </div>
+    @endif
 
-        <div class="grid gap-4 md:grid-cols-2">
-            @forelse ($screens as $screen)
-                @php
-                    $premiumRows = $screen->premium_seats_count > 0 ? $screen->premiumRowLabels() : [];
-                    $bookable = $screen->seats_count - $screen->disabled_seats_count;
-                @endphp
+    @if ($errors->any())
+        <div class="rounded-lg border border-red-700 bg-red-900/40 p-4 text-sm text-red-200">
+            @foreach ($errors->all() as $error)
+                <p>{{ $error }}</p>
+            @endforeach
+        </div>
+    @endif
 
-                <div class="flex flex-col gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-6">
-                    <h2 class="text-2xl font-semibold">{{ $screen->name }}</h2>
+    <div class="grid gap-6 md:grid-cols-2">
+        @forelse ($screens as $screen)
+            @php
+                $premiumRows = $screen->premium_seats_count > 0 ? $screen->premiumRowLabels() : [];
+                $bookable = $screen->seats_count - $screen->disabled_seats_count;
+            @endphp
 
-                    <dl class="flex flex-col gap-2 text-sm">
-                        <div class="flex justify-between gap-4">
-                            <dt class="text-zinc-400">Seat grid</dt>
-                            <dd>{{ $screen->rowRange() }} · {{ $screen->total_rows }} × {{ $screen->seats_per_row }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-4">
-                            <dt class="text-zinc-400">Total seats</dt>
-                            <dd>{{ $screen->seats_count }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-4">
-                            <dt class="text-zinc-400">Disabled / bookable</dt>
-                            <dd>{{ $screen->disabled_seats_count }} / {{ $bookable }}</dd>
-                        </div>
-                        <div class="flex justify-between gap-4">
-                            <dt class="text-zinc-400">Premium rows</dt>
-                            <dd>
-                                @if ($premiumRows)
-                                    {{ implode(', ', $premiumRows) }} · {{ $screen->premium_seats_count }} seats
-                                @else
-                                    None
-                                @endif
-                            </dd>
-                        </div>
-                    </dl>
+            <div class="flex flex-col gap-5 rounded-[14px] border border-[#283750] bg-[#101a2d] p-6">
+                <div class="flex flex-col gap-[22px] text-sm leading-[1.6] text-[#a0aec5]">
+                    <p>• {{ $screen->seats_count }} SEATS</p>
+
+                    <p class="text-[34px] font-bold leading-[1.2] text-[#f4f7ff]">{{ $screen->name }}</p>
+
+                    <p>Seat grid &nbsp;·&nbsp; {{ $screen->rowRange() }} · {{ $screen->total_rows }} ×
+                        {{ $screen->seats_per_row }}
+                    </p>
+                    <p>Total seats &nbsp;·&nbsp; {{ $screen->seats_count }}</p>
+                    <p>Disabled / bookable &nbsp;·&nbsp; {{ $screen->disabled_seats_count }} / {{ $bookable }}</p>
+                    <p>
+                        Premium rows &nbsp;·&nbsp;
+                        @if ($premiumRows)
+                            {{ implode(', ', $premiumRows) }} · {{ $screen->premium_seats_count }} seats
+                        @else
+                            None
+                        @endif
+                    </p>
 
                     @if ($screen->showtimes_count > 0)
-                        <p class="text-xs text-zinc-400">Grid dimensions locked · {{ $screen->showtimes_count }} showtime(s)</p>
+                        <p>◷ Grid dimensions locked · Show history</p>
                     @endif
-
-                    <div class="mt-2 flex items-center gap-3">
-                        <a href="{{ route('admin.screens.show', $screen) }}"
-                            class="rounded-lg border border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-800">
-                            Manage seats →
-                        </a>
-                        <a href="{{ route('admin.screens.edit', $screen) }}"
-                            class="text-sm text-zinc-400 hover:underline">Rename</a>
-                        <form method="POST" action="{{ route('admin.screens.destroy', $screen) }}"
-                            onsubmit="return confirm('Delete this screen?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-sm text-red-400 hover:underline">Delete</button>
-                        </form>
-                    </div>
                 </div>
-            @empty
-                <p class="text-zinc-400">No screens yet. Create your first one.</p>
-            @endforelse
-        </div>
 
-        <div class="rounded-lg border border-blue-900 bg-blue-950/60 p-4 text-sm">
-            <p class="font-medium">Safe seat management</p>
-            <p class="text-zinc-300">
-                You cannot disable a seat with an active hold or a future booking.
-                Grid dimensions cannot change once a screen has show history.
-            </p>
-        </div>
+                <div class="mt-auto flex items-center gap-4">
+                    <a href="{{ route('admin.screens.show', $screen) }}"
+                        class="rounded-lg border border-[#283750] bg-[#17243b] px-5 py-[13px] text-sm text-white hover:bg-[#1e2f4d]">
+                        Manage seats →
+                    </a>
+                </div>
+            </div>
+        @empty
+            <p class="text-[#a0aec5]">No screens yet. Create your first one.</p>
+        @endforelse
     </div>
-</x-layouts::app>
+
+    <div class="rounded-lg bg-[#172f58] p-4 text-sm leading-[1.6] text-[#f4f7ff]">
+        <p>ⓘ Safe seat management</p>
+        <p>You cannot disable a seat with an active hold or a future booking. Grid dimensions cannot change once a
+            screen has show history.</p>
+    </div>
+</x-layouts::admin>
