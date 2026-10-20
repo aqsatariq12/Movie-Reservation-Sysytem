@@ -1,13 +1,20 @@
 {{-- resources/views/bookings/show.blade.php --}}
 @php
+    $status = $booking->status instanceof \BackedEnum
+        ? $booking->status->value
+        : (string) $booking->status;
+
     $statusStyle = [
-        'confirmed'       => ['✓', 'text-[#60d4ae]'],
+        'confirmed' => ['✓', 'text-[#60d4ae]'],
         'pending_payment' => ['◷', 'text-[#925812]'],
+        'cancelled' => ['•', 'text-[#6b7280]'],
+        'refunded' => ['•', 'text-[#6b7280]'],
+        'failed' => ['•', 'text-[#6b7280]'],
+        'expired' => ['•', 'text-[#6b7280]'],
     ][$status] ?? ['•', 'text-[#6b7280]'];
 
     $routes = \Illuminate\Support\Facades\Route::class;
 
-    // Route is owned by Member B (checkout). Falls back to this page until it exists.
     $resumeUrl = $routes::has('checkout.show')
         ? route('checkout.show', $booking)
         : route('bookings.show', $booking);
@@ -28,7 +35,8 @@
 
             {{-- Status row --}}
             <div class="flex flex-wrap items-center gap-4">
-                <p class="min-w-[140px] flex-1 text-xs {{ $statusStyle[1] }}">{{ $statusStyle[0] }} {{ $statusLabel }}</p>
+                <p class="min-w-[140px] flex-1 text-xs {{ $statusStyle[1] }}">{{ $statusStyle[0] }} {{ $statusLabel }}
+                </p>
 
                 <p class="min-w-[240px] flex-1 text-[13px] leading-[1.45] text-[#6b7280]">
                     Reserved {{ $booking->created_at->format('F j, Y \a\t H:i') }} · {{ $booking->user->name }}
@@ -196,28 +204,18 @@
                             </div>
 
                             @if ($cancellation['state'] === 'eligible')
-                                @if (\Illuminate\Support\Facades\Route::has('bookings.cancel'))
-                                    <form method="POST" action="{{ route('bookings.cancel', $booking) }}">
-                                        @csrf
-                                        <button type="submit"
-                                            class="rounded-xl border border-[#e3d8c8] bg-[#f4f7ff] px-5 py-[13px] text-sm text-[#1f2937] hover:bg-[#e8efff] print:hidden">
-                                            Cancel full booking
-                                        </button>
-                                    </form>
-                                @else
-                                    {{-- The cancel flow is the next screen (confirmation + Member B's refund Action). --}}
-                                    <button type="button" disabled
-                                        class="cursor-not-allowed rounded-xl border border-[#e3d8c8] bg-[#f4f7ff] px-5 py-[13px] text-sm text-[#1f2937] opacity-70 print:hidden">
-                                        Cancel full booking
-                                    </button>
-                                @endif
+                                <a href="{{ route('bookings.cancel.confirm', $booking) }}"
+                                    class="rounded-xl border border-[#e3d8c8] bg-[#f4f7ff] px-5 py-[13px] text-sm text-[#1f2937] hover:bg-[#e8efff] print:hidden">
+                                    Cancel full booking
+                                </a>
                             @endif
                         </section>
                     @endif
 
                     {{-- Email notice --}}
                     @if ($emailPending)
-                        <div class="rounded-xl border border-[#e3d8c8] bg-[#f4f7ff] p-4 text-sm leading-[1.6] text-[#1f2937]">
+                        <div
+                            class="rounded-xl border border-[#e3d8c8] bg-[#f4f7ff] p-4 text-sm leading-[1.6] text-[#1f2937]">
                             <p>ⓘ Email delivery pending</p>
                             <p>Your booking stays confirmed. Tickets are available here regardless of email delivery.</p>
                         </div>

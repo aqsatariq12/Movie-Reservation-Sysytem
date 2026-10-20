@@ -57,7 +57,7 @@
         </div>
 
         <p class="mb-6 text-[13px] text-cb-muted">
-            {{ $movies->count() }} movies
+            {{ count($movies) }} movies
         </p>
 
         {{-- Movie poster grid --}}

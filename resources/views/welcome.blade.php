@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>CineBook — Book Your Movie Experience</title>
-    <meta name="description" content="Discover movies, explore showtimes, and plan your next cinema experience with CineBook.">
+    <meta name="description"
+        content="Discover movies, explore showtimes, and plan your next cinema experience with CineBook.">
 
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+
 <body class="cinebook-page">
 
     {{-- Navigation --}}
@@ -30,7 +33,33 @@
             <div class="cinebook-auth">
                 @if (Route::has('login'))
                     @auth
-                        <a href="{{ route('dashboard') }}" class="cinebook-login">Dashboard</a>
+                        <details class="group relative">
+                            <summary class="cinebook-login flex cursor-pointer list-none items-center gap-2">
+                                {{ auth()->user()->name }}
+
+                                <svg class="size-4 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="none"
+                                    aria-hidden="true">
+                                    <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                            </summary>
+
+                            <div
+                                class="absolute right-0 top-full z-50 mt-3 w-52 rounded-2xl border border-cb-line bg-white p-2 shadow-lg">
+                                <a href="{{ route('profile.edit') }}"
+                                    class="block rounded-xl px-3 py-2.5 text-sm text-cb-ink hover:bg-[#f7f4ee]">
+                                    Settings
+                                </a>
+
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit"
+                                        class="w-full rounded-xl px-3 py-2.5 text-left text-sm text-[#b42335] hover:bg-[#fff1f2]">
+                                        Log out
+                                    </button>
+                                </form>
+                            </div>
+                        </details>
                     @else
                         <a href="{{ route('login') }}" class="cinebook-login">Log in</a>
 
@@ -47,66 +76,65 @@
 
     <main>
         {{-- Hero section --}}
-        
-{{-- Hero section --}}
-<section class="cinebook-hero">
-    <div class="cinebook-container cinebook-hero-inner">
-        <div class="cinebook-hero-content">
 
-            <span class="cinebook-eyebrow">
-                01 · CUSTOMER / HOME · NOW SHOWING
-            </span>
+        {{-- Hero section --}}
+        <section class="cinebook-hero">
+            <div class="cinebook-container cinebook-hero-inner">
+                <div class="cinebook-hero-content">
 
-            <div class="cinebook-location-label">
-                <span class="cinebook-live-dot"></span>
-                ONLY AT CINEBOOK DOWNTOWN
+                    <span class="cinebook-eyebrow">
+                        01 · CUSTOMER / HOME · NOW SHOWING
+                    </span>
+
+                    <div class="cinebook-location-label">
+                        <span class="cinebook-live-dot"></span>
+                        ONLY AT CINEBOOK DOWNTOWN
+                    </div>
+
+                    <h1>The Last Horizon</h1>
+
+                    <div class="cinebook-hero-meta">
+                        <span>2026</span>
+                        <span>·</span>
+                        <span>PG-13</span>
+                        <span>·</span>
+                        <span>124 min</span>
+                        <span>·</span>
+                        <span>Sci-Fi / Drama</span>
+                    </div>
+
+                    <p>
+                        Beyond the edge of the known universe, one signal
+                        leads an astronaut back to everything she thought
+                        she had lost.
+                    </p>
+
+                    <div class="cinebook-hero-actions">
+                        <a href="#showtimes" class="cinebook-button">
+                            Find seats <span aria-hidden="true">→</span>
+                        </a>
+
+                        <a href="#trailer" class="cinebook-button cinebook-button-outline">
+                            <span aria-hidden="true">▷</span>
+                            Watch trailer
+                        </a>
+                    </div>
+
+                    <div class="cinebook-hero-showtime">
+                        <span>Tonight</span>
+                        <span>·</span>
+                        <span>Screen 1</span>
+                        <span>·</span>
+                        <span>19:30</span>
+                        <span>·</span>
+                        <strong>From $10</strong>
+                    </div>
+
+                </div>
+
+
             </div>
-
-            <h1>The Last Horizon</h1>
-
-            <div class="cinebook-hero-meta">
-                <span>2026</span>
-                <span>·</span>
-                <span>PG-13</span>
-                <span>·</span>
-                <span>124 min</span>
-                <span>·</span>
-                <span>Sci-Fi / Drama</span>
-            </div>
-
-            <p>
-                Beyond the edge of the known universe, one signal
-                leads an astronaut back to everything she thought
-                she had lost.
-            </p>
-
-            <div class="cinebook-hero-actions">
-                <a href="#showtimes" class="cinebook-button">
-                    Find seats <span aria-hidden="true">→</span>
-                </a>
-
-                <a href="#trailer"
-                   class="cinebook-button cinebook-button-outline">
-                    <span aria-hidden="true">▷</span>
-                    Watch trailer
-                </a>
-            </div>
-
-            <div class="cinebook-hero-showtime">
-                <span>Tonight</span>
-                <span>·</span>
-                <span>Screen 1</span>
-                <span>·</span>
-                <span>19:30</span>
-                <span>·</span>
-                <strong>From $10</strong>
-            </div>
-
-        </div>
-
-        
-    </div>
-</section>
+        </section>
 
 
         {{-- Showtime discovery --}}
@@ -190,13 +218,9 @@
                     @foreach ($movies as $movie)
                         <article class="cinebook-movie-card">
                             <a href="#showtimes" class="cinebook-poster-link"
-                               aria-label="Explore showtimes for {{ $movie['title'] }}">
-                                <img
-                                    class="cinebook-poster"
-                                    src="{{ asset('images/cinebook/' . $movie['image']) }}"
-                                    alt="{{ $movie['title'] }} movie poster"
-                                    loading="lazy"
-                                >
+                                aria-label="Explore showtimes for {{ $movie['title'] }}">
+                                <img class="cinebook-poster" src="{{ asset('images/cinebook/' . $movie['image']) }}"
+                                    alt="{{ $movie['title'] }} movie poster" loading="lazy">
                                 <span class="cinebook-poster-overlay">
                                     View showtimes <span aria-hidden="true">→</span>
                                 </span>
@@ -208,7 +232,7 @@
                                     <p>{{ $movie['genre'] }}</p>
                                 </div>
                                 <a href="#showtimes" class="cinebook-arrow-link"
-                                   aria-label="View showtimes for {{ $movie['title'] }}">↗</a>
+                                    aria-label="View showtimes for {{ $movie['title'] }}">↗</a>
                             </div>
                         </article>
                     @endforeach
@@ -322,4 +346,5 @@
     </footer>
 
 </body>
+
 </html>
