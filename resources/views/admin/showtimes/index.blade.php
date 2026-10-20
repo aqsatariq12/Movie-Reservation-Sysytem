@@ -14,6 +14,14 @@
         <div class="rounded-lg border border-green-700 bg-green-900/40 p-4 text-sm text-green-200">{{ session('status') }}</div>
     @endif
 
+    @if ($errors->any())
+        <div class="rounded-lg border border-red-700 bg-red-900/40 p-4 text-sm text-red-200">
+            @foreach ($errors->all() as $error)
+                <p>{{ $error }}</p>
+            @endforeach
+        </div>
+    @endif
+
     <form method="GET" action="{{ route('admin.showtimes.index') }}" class="grid gap-6 md:grid-cols-3">
         <input type="hidden" name="tab" value="{{ $tab }}">
 
@@ -81,9 +89,11 @@
                         <td class="py-4">{{ $s->sold_count }} / {{ $s->held_count }}</td>
                         <td class="py-4 {{ $s->status === 'cancelled' ? 'text-red-400' : 'text-[#87beff]' }}">{{ ucfirst($s->status) }}</td>
                         <td class="py-4">
-                            {{-- TODO: link to the showtime detail / cancel page (Figma frame 30) --}}
-                            @if (Route::has('admin.showtimes.show'))
-                                <a href="{{ route('admin.showtimes.show', $s) }}" class="hover:underline">View →</a>
+                            {{-- Only a scheduled show that has not started can be edited --}}
+                            @if ($tab === 'upcoming' && $s->status === 'scheduled')
+                                <a href="{{ route('admin.showtimes.edit', $s) }}" class="text-[#87beff] hover:underline">Edit →</a>
+                            @else
+                                <span class="text-[#74849f]">Read-only</span>
                             @endif
                         </td>
                     </tr>
