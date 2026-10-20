@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Actions\Screens\GenerateSeatsAction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class Screen extends Model
 {
@@ -50,5 +51,40 @@ class Screen extends Model
             ->orderBy('row_label')
             ->pluck('row_label')
             ->all();
+    }
+
+    /** "G–H" when rows are consecutive, otherwise "A, C" */
+    public function premiumRowsSummary(): string
+    {
+        $labels = $this->premiumRowLabels();
+
+        if (count($labels) > 1 && ord(end($labels)) - ord($labels[0]) === count($labels) - 1) {
+            return $labels[0] . '–' . end($labels);
+        }
+
+        return implode(', ', $labels);
+    }
+
+    /**
+     * Seats of this screen that are sold, or actively held, for an upcoming showtime.
+     * These seats are protected: they cannot be disabled.
+     *
+     * @return Collection<int, string>  seat_id => 'sold' | 'held'
+     */
+    public function reservedSeats(): Collection
+    {
+        return ShowtimeSeat::query()
+            ->whereIn('seat_id', $this->seats()->select('id'))
+            ->whereHas('showtime', fn($q) => $q
+                ->where('status', 'scheduled')
+                ->where('starts_at', '>', now()))
+            ->where(fn($q) => $q
+                ->where('status', 'sold')
+                ->orWhere(fn($h) => $h
+                    ->where('status', 'held')
+                    ->where('held_until', '>', now())))
+            ->orderBy('status')
+            ->get(['seat_id', 'status'])
+            ->mapWithKeys(fn($row) => [$row->seat_id => $row->status]);
     }
 }
