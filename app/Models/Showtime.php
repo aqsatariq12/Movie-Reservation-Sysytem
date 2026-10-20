@@ -54,6 +54,12 @@ class Showtime extends Model
         return $this->hasMany(Booking::class);
     }
 
+    /** True once a customer has an unpaid or paid booking: movie, screen and start time are then locked. */
+    public function hasActiveBookings(): bool
+    {
+        return $this->bookings()->whereIn('status', ['pending_payment', 'confirmed'])->exists();
+    }
+
     /** 1000 => "$10.00" (integer maths only, never floats for money) */
     public static function money(int $cents): string
     {
