@@ -28,33 +28,73 @@
         </div>
 
         {{-- Search and filters: visual layout for now --}}
-        <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+        {{-- Search and filters --}}
+        <form method="GET"
+              action="{{ route('movies.index') }}"
+              class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
             <label class="rounded-2xl border border-cb-line bg-white p-4">
                 <span class="mb-2 block text-[12px] font-semibold text-cb-muted">
                     SEARCH MOVIES
                 </span>
-                <input type="search"
-                       placeholder="Search by title…"
-                       class="w-full bg-transparent text-[14px] text-cb-ink outline-none">
+
+                <input
+                    type="search"
+                    name="search"
+                    value="{{ $search }}"
+                    placeholder="Search by title..."
+                    class="w-full bg-transparent text-[14px] text-cb-ink outline-none"
+                >
             </label>
 
             <label class="rounded-2xl border border-cb-line bg-white p-4">
                 <span class="mb-2 block text-[12px] font-semibold text-cb-muted">
                     GENRE
                 </span>
-                <select class="w-full bg-transparent text-[14px] text-cb-ink outline-none">
-                    <option>All genres</option>
+
+                <select
+                    name="genre"
+                    onchange="this.form.submit()"
+                    class="w-full bg-transparent text-[14px] text-cb-ink outline-none"
+                >
+                    <option value="">All genres</option>
+
+                    @foreach ($genres as $genre)
+                        <option
+                            value="{{ $genre->slug }}"
+                            @selected($genreSlug === $genre->slug)
+                        >
+                            {{ $genre->name }}
+                        </option>
+                    @endforeach
                 </select>
             </label>
 
-            <label class="rounded-2xl border border-cb-line bg-white p-4 sm:col-span-2 lg:col-span-1">
-                <span class="mb-2 block text-[12px] font-semibold text-cb-muted">
-                    SHOW DATE
-                </span>
-                <input type="date"
-                       class="w-full bg-transparent text-[14px] text-cb-ink outline-none">
-            </label>
-        </div>
+            
+<label class="rounded-2xl border border-cb-line bg-white p-4 sm:col-span-2 lg:col-span-1">
+    <span class="mb-2 block text-[12px] font-semibold text-cb-muted">
+        SHOW DATE
+    </span>
+
+    <input
+        type="date"
+        name="show_date"
+        value="{{ $showDate ?? '' }}"
+        min="{{ now()->toDateString() }}"
+        class="w-full bg-transparent text-[14px] text-cb-ink outline-none"
+    >
+</label>
+
+
+            <button
+                type="submit"
+                class="rounded-xl bg-blue-500 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 sm:col-span-2 lg:col-span-3"
+            >
+                Search movies
+            </button>
+        </form>
+
 
         <p class="mb-6 text-[13px] text-cb-muted">
             {{ count($movies) }} movies
@@ -103,9 +143,9 @@
                     </a>
                 </article>
             @empty
-                <p class="text-[14px] text-cb-muted">
-                    No movies found. Run <code>php artisan db:seed</code> if you have not seeded your database.
-                </p>
+               <p class="text-[14px] text-cb-muted">
+    No movies found. Try another search or genre.
+</p>
             @endforelse
         </div>
 

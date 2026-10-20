@@ -8,7 +8,7 @@
         <section class="grid gap-8 md:grid-cols-[280px_1fr] lg:grid-cols-[340px_1fr]">
 
             <div>
-                <img src="{{ $movie->poster_url ?? asset('images/cinebook/movie-1.png') }}"
+                <img src="{{ $movie->posterUrl ?? asset('images/cinebook/movie-1.png') }}"
                     alt="{{ $movie->title }} poster" class="w-full rounded-2xl object-cover shadow-md">
             </div>
 
@@ -53,7 +53,12 @@
                 Available showtimes
             </h2>
 
-            @forelse ($movie->showtimes as $showtime)
+
+            @forelse ($showtimes as $item)
+                @php
+                    $showtime = $item['showtime'];
+                @endphp
+
                 <div
                     class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cb-line bg-white p-5">
                     <div>
@@ -68,6 +73,16 @@
                         <p class="mt-1 text-sm text-cb-muted">
                             From ${{ number_format($showtime->base_price_cents / 100, 2) }}
                         </p>
+
+                        @if ($item['booking_open'])
+                            <p class="mt-2 text-sm text-green-700">
+                                Booking open
+                            </p>
+                        @else
+                            <p class="mt-2 text-sm text-red-600">
+                                Booking closed — sales close 15 minutes before the show
+                            </p>
+                        @endif
                     </div>
 
                     <span class="text-sm text-cb-brand">
@@ -79,6 +94,7 @@
                     No upcoming showtimes are available for this movie yet.
                 </p>
             @endforelse
+
         </section>
 
     </main>
