@@ -20,8 +20,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::put('screens/{screen}/seats', [ScreenController::class, 'syncSeats'])
         ->name('screens.seats.sync');
 
-    Route::resource('showtimes', ShowtimeController::class)->only(['index', 'create', 'store']);
-});
+    Route::resource('showtimes', ShowtimeController::class)->only(['index', 'create', 'store', 'edit', 'update']);});
 
 // Customer: the seat map is public, holding seats needs a verified account
 Route::get('showtimes/{showtime}/seats', [SeatMapController::class, 'show'])
