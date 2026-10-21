@@ -75,4 +75,8 @@ class Showtime extends Model
             $date->copy()->endOfDay(),
         ]);
     }
+    public static function money(int $cents): string
+    {
+        return '$' . number_format($cents / 100, 2);
+    }
 }

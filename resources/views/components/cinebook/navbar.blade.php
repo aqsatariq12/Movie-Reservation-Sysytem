@@ -1,5 +1,6 @@
 @php
     use Illuminate\Support\Facades\Route;
+    use App\Models\Hold;
 
     // Prevent errors when a route has not been created yet.
     $url = fn(string $name, string $fallback = '#') =>
@@ -9,6 +10,15 @@
         'profile.edit',
         $url('settings.profile', '/settings/profile')
     );
+
+    // Find this customer's active, unexpired hold.
+    $activeHold = auth()->check()
+        ? Hold::where('user_id', auth()->id())
+            ->where('status', 'active')
+            ->where('expires_at', '>', now())
+            ->latest('created_at')
+            ->first()
+        : null;
 @endphp
 
 <header class="border-b border-cb-line bg-cb-cream">
@@ -27,18 +37,23 @@
         {{-- Navigation links --}}
         <div class="flex w-full flex-wrap items-center gap-x-5 gap-y-3 text-[14px] sm:gap-x-7 md:w-auto md:flex-1">
 
-            <a href="{{ $url('movies.index') }}"
-                class="font-semibold text-cb-ink">
+            <a href="{{ $url('movies.index') }}" class="font-semibold text-cb-ink">
                 Movies
             </a>
 
-            <a href="{{ $url('bookings.index') }}"
-                class="text-cb-muted hover:text-cb-ink">
+            <a href="{{ $url('bookings.index') }}" class="text-cb-muted hover:text-cb-ink">
                 My bookings
             </a>
 
-            <a href="{{ $url('home', '/') }}#cinema"
-                class="text-cb-muted hover:text-cb-ink">
+            @if ($activeHold && Route::has('holds.show'))
+                <a href="{{ route('holds.show', $activeHold) }}"
+                    class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-2 font-semibold text-blue-700 transition hover:bg-blue-100">
+                    <span class="size-2 rounded-full bg-blue-600"></span>
+                    Held seats
+                </a>
+            @endif
+
+            <a href="{{ $url('home', '/') }}#cinema" class="text-cb-muted hover:text-cb-ink">
                 CineBook Downtown
             </a>
 
@@ -52,16 +67,9 @@
                             {{ auth()->user()->name }}
                         </span>
 
-                        <svg
-                            class="size-4 shrink-0 transition-transform group-open:rotate-180"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            aria-hidden="true">
-                            <path
-                                d="m5 7.5 5 5 5-5"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                                stroke-linecap="round"
+                        <svg class="size-4 shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 20 20"
+                            fill="none" aria-hidden="true">
+                            <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
                                 stroke-linejoin="round" />
                         </svg>
                     </summary>
@@ -86,7 +94,7 @@
                             Settings
                         </a>
 
-                        
+
                         {{-- Log out --}}
                         <div class="mt-1 border-t border-cb-line pt-1">
                             <form method="POST" action="{{ route('logout') }}">

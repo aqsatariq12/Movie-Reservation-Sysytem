@@ -33,7 +33,7 @@ class GetHomePageData
     {
         $today = Carbon::today();
 
-        if (! $selected) {
+        if (!$selected) {
             return $today;
         }
 
@@ -43,7 +43,7 @@ class GetHomePageData
             return $today;
         }
 
-        if (! $date || $date->format('Y-m-d') !== $selected) {
+        if (!$date || $date->format('Y-m-d') !== $selected) {
             return $today;
         }
 
@@ -61,18 +61,21 @@ class GetHomePageData
     {
         $movie = Movie::query()
             ->nowShowing()
-            ->with(['genres', 'showtimes' => function ($query) {
-                $query->scheduled()
-                    ->upcoming()
-                    ->orderBy('starts_at');
-            }])
+            ->with([
+                'genres',
+                'showtimes' => function ($query) {
+                    $query->scheduled()
+                        ->upcoming()
+                        ->orderBy('starts_at');
+                }
+            ])
             ->whereHas('showtimes', function ($query) {
                 $query->scheduled()->upcoming();
             })
             ->orderByRaw("CASE WHEN slug = 'the-last-horizon' THEN 0 ELSE 1 END")
             ->first();
 
-        if (! $movie) {
+        if (!$movie) {
             return [
                 'title' => 'Welcome to CineBook',
                 'year' => Carbon::today()->year,
@@ -102,9 +105,9 @@ class GetHomePageData
             'synopsis' => $movie->synopsis,
             'image' => $image,
             'tonight' => $showtime
-                ? 'Next showtime · '.$showtime->screen->name
-                    .' · '.$showtime->starts_at->format('H:i')
-                    .' · From '.$this->price($showtime->base_price_cents)
+                ? 'Next showtime · ' . $showtime->screen->name
+                . ' · ' . $showtime->starts_at->format('H:i')
+                . ' · From ' . $this->price($showtime->base_price_cents)
                 : 'Check available showtimes.',
             'url' => $this->movieUrl($movie->slug),
             'trailer_url' => $movie->trailer_url ?: '#',
@@ -122,12 +125,12 @@ class GetHomePageData
 
                 return [
                     'label' => $i === 0
-                        ? 'Today · '.$day->format('M j')
+                        ? 'Today · ' . $day->format('M j')
                         : $day->format('D · M j'),
 
                     'url' => route('home', [
                         'date' => $day->toDateString(),
-                    ]).'#showtimes',
+                    ]) . '#showtimes',
 
                     'active' => $day->isSameDay($selectedDate),
                 ];
@@ -148,8 +151,9 @@ class GetHomePageData
             ->get();
 
         $rows = $showtimes
-            ->groupBy(fn (Showtime $showtime) =>
-                $showtime->movie_id.'-'.$showtime->screen_id
+            ->groupBy(
+                fn(Showtime $showtime) =>
+                    $showtime->movie_id . '-' . $showtime->screen_id
             )
             ->map(function ($items) {
                 $first = $items->first();
@@ -157,6 +161,7 @@ class GetHomePageData
 
                 return [
                     'title' => $first->movie->title,
+                    'movie_url' => $this->movieUrl($first->movie->slug),
                     'screen' => $first->screen->name,
                     'standard_price' => $price,
 
@@ -164,7 +169,7 @@ class GetHomePageData
                     // Replace this when pricing tiers are implemented.
                     'premium_price' => $price,
 
-                    'times' => $items->map(fn (Showtime $showtime) => [
+                    'times' => $items->map(fn(Showtime $showtime) => [
                         'time' => $showtime->starts_at->format('H:i'),
                         'closed' => $showtime->starts_at->isPast(),
                     ])->all(),
@@ -253,7 +258,7 @@ class GetHomePageData
         return Genre::query()
             ->orderBy('name')
             ->get()
-            ->map(fn (Genre $genre) => [
+            ->map(fn(Genre $genre) => [
                 'name' => $genre->name,
                 'url' => $this->moviesUrl([
                     'genre' => $genre->slug,
@@ -264,7 +269,7 @@ class GetHomePageData
 
     private function price(?int $cents): string
     {
-        return '$'.number_format(($cents ?? 0) / 100, 2);
+        return '$' . number_format(($cents ?? 0) / 100, 2);
     }
 
     private function movieUrl(string $slug): string

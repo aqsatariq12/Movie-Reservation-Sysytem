@@ -85,9 +85,23 @@
                         @endif
                     </div>
 
-                    <span class="text-sm text-cb-brand">
-                        {{ $showtime->status->value }}
-                    </span>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-sm text-cb-brand">
+                            {{ $showtime->status->value }}
+                        </span>
+
+                        @if ($item['booking_open'])
+                            <a href="{{ route('showtimes.seats', $showtime) }}"
+                                class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                                Choose seats →
+                            </a>
+                        @else
+                            <span
+                                class="cursor-not-allowed rounded-xl bg-slate-100 px-5 py-3 text-sm font-medium text-slate-400">
+                                Booking closed
+                            </span>
+                        @endif
+                    </div>
                 </div>
             @empty
                 <p class="rounded-2xl border border-cb-line p-5 text-cb-muted">
