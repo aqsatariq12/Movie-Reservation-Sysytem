@@ -152,7 +152,7 @@ class GetHomePageData
 
         $rows = $showtimes
             ->groupBy(
-                fn(Showtime $showtime) =>
+                fn($showtime) =>
                     $showtime->movie_id . '-' . $showtime->screen_id
             )
             ->map(function ($items) {
@@ -169,7 +169,7 @@ class GetHomePageData
                     // Replace this when pricing tiers are implemented.
                     'premium_price' => $price,
 
-                    'times' => $items->map(fn(Showtime $showtime) => [
+                    'times' => $items->map(fn($showtime) => [
                         'time' => $showtime->starts_at->format('H:i'),
                         'closed' => $showtime->starts_at->isPast(),
                     ])->all(),
@@ -203,7 +203,7 @@ class GetHomePageData
             ->orderBy('title')
             ->take(5)
             ->get()
-            ->map(function (Movie $movie) {
+            ->map(function ($movie) {
                 $nextShowtime = $movie->showtimes->first();
 
                 return [
@@ -234,7 +234,7 @@ class GetHomePageData
             ->orderBy('release_date')
             ->take(3)
             ->get()
-            ->map(function (Movie $movie) {
+            ->map(function ($movie) {
                 return [
                     'title' => $movie->title,
                     'rating' => $movie->rating,
@@ -258,7 +258,7 @@ class GetHomePageData
         return Genre::query()
             ->orderBy('name')
             ->get()
-            ->map(fn(Genre $genre) => [
+            ->map(fn($genre) => [
                 'name' => $genre->name,
                 'url' => $this->moviesUrl([
                     'genre' => $genre->slug,
