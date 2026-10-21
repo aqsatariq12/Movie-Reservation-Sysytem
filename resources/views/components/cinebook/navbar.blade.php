@@ -88,6 +88,14 @@
                             </p>
                         </div>
 
+                        {{-- Admin Dashboard: visible only to admins --}}
+                        @if (auth()->user()->isAdmin())
+                            <a href="{{ $url('admin.dashboard') }}"
+                                class="mt-2 flex items-center rounded-xl px-3 py-2.5 text-sm font-semibold text-cb-brand transition hover:bg-[#f7f4ee]">
+                                Dashboard
+                            </a>
+                        @endif
+
                         {{-- Settings --}}
                         <a href="{{ $settingsUrl }}"
                             class="mt-2 flex items-center rounded-xl px-3 py-2.5 text-sm text-cb-ink transition hover:bg-[#f7f4ee]">

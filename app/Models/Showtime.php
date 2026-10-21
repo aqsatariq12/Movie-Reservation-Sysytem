@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Illuminate\Support\Facades\DB;
 class Showtime extends Model
 {
+    public const TURNAROUND_MINUTES = 15;
     use HasFactory;
 
     protected $fillable = [
@@ -75,6 +76,29 @@ class Showtime extends Model
             $date->copy()->endOfDay(),
         ]);
     }
+
+
+    public function hasActiveBookings(): bool
+    {
+        return $this->bookings()
+            ->whereIn('status', ['pending_payment', 'confirmed'])
+            ->exists();
+    }
+
+    public static function setting(string $key, int $default): int
+    {
+        return (int) (
+            DB::table('settings')->where('key', $key)->value('value')
+            ?? $default
+        );
+    }
+
+    public static function premiumSurchargeCents(): int
+    {
+        return self::setting('premium_surcharge_cents', 200);
+    }
+
+
     public static function money(int $cents): string
     {
         return '$' . number_format($cents / 100, 2);
