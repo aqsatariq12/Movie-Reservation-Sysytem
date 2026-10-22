@@ -3,15 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Showtimes\CreateShowtimeAction;
+use App\Actions\Showtimes\UpdateShowtimeAction;
+use App\Enums\ShowtimeStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ShowtimeIndexRequest;
 use App\Http\Requests\Admin\StoreShowtimeRequest;
+use App\Http\Requests\Admin\UpdateShowtimeRequest;
 use App\Models\Screen;
 use App\Models\Showtime;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Actions\Showtimes\UpdateShowtimeAction;
-use App\Http\Requests\Admin\UpdateShowtimeRequest;
 
 class ShowtimeController extends Controller
 {
@@ -49,8 +50,14 @@ class ShowtimeController extends Controller
             ->paginate(6)
             ->withQueryString();
 
+        // ?view=ID -> read-only panel at the bottom of the page (past / cancelled shows)
+        $viewing = $request->filled('view')
+            ? Showtime::with(['screen', 'movie'])->find($request->integer('view'))
+            : null;
+
         return view('admin.showtimes.index', [
             'showtimes' => $showtimes,
+            'viewing' => $viewing,
             'tab' => $tab,
             'counts' => $counts,
             'screens' => Screen::orderBy('name')->get(['id', 'name']),
@@ -83,11 +90,11 @@ class ShowtimeController extends Controller
         return redirect()->route('admin.showtimes.index')
             ->with('status', 'Showtime created and seats generated.');
     }
+
     public function edit(Showtime $showtime)
     {
-        if ($showtime->status !== 'scheduled' || $showtime->starts_at->isPast()) {
-            return redirect()->route('admin.showtimes.index')
-                ->withErrors('Past or cancelled showtimes are read-only.');
+        if (! $this->isEditable($showtime)) {
+            return $this->readOnlyRedirect($showtime);
         }
 
         $showtime->load('screen');
@@ -106,6 +113,11 @@ class ShowtimeController extends Controller
 
     public function update(UpdateShowtimeRequest $request, Showtime $showtime, UpdateShowtimeAction $update)
     {
+        // Same guard as edit(): a typed URL must not bypass the read-only rule.
+        if (! $this->isEditable($showtime)) {
+            return $this->readOnlyRedirect($showtime);
+        }
+
         $update->execute(
             $showtime,
             $request->integer('movie_id') ?: null,
@@ -116,5 +128,22 @@ class ShowtimeController extends Controller
 
         return redirect()->route('admin.showtimes.index')
             ->with('status', 'Showtime updated.');
+    }
+
+    /** Only a scheduled show that has not started yet can be edited. */
+    private function isEditable(Showtime $showtime): bool
+    {
+        return $showtime->status === ShowtimeStatus::Scheduled
+            && $showtime->starts_at->isFuture();
+    }
+
+    /** Past / cancelled: send the admin to the read-only panel instead of an error. */
+    private function readOnlyRedirect(Showtime $showtime)
+    {
+        $tab = $showtime->status === ShowtimeStatus::Cancelled ? 'cancelled' : 'past';
+
+        return redirect()->to(
+            route('admin.showtimes.index', ['tab' => $tab, 'view' => $showtime->id]) . '#showtime-panel'
+        );
     }
 }

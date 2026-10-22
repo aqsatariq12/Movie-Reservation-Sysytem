@@ -1,3 +1,6 @@
+@extends('layouts.admin')
+
+@section('content')
 @php
     $cents = $showtime->base_price_cents;
     $priceValue = old('base_price', sprintf('%d.%02d', intdiv($cents, 100), $cents % 100));
@@ -5,7 +8,6 @@
     $movieTitle = $movies->firstWhere('id', $showtime->movie_id)?->title;
 @endphp
 
-<x-layouts::admin :title="__('Edit showtime')">
     <div>
         <p class="text-xs font-semibold uppercase leading-[1.5] text-[#87beff]">Cinebook Downtown / Programming / Showtimes</p>
         <h1 class="text-[32px] font-bold leading-[1.5] text-[#f4f7ff]">Edit showtime</h1>
@@ -161,4 +163,4 @@
             update();
         })();
     </script>
-</x-layouts::admin>
+@endsection

@@ -39,11 +39,11 @@ class SeatMapController extends Controller
             ->get();
 
         $days = $upcoming
-            ->groupBy(fn ($item) => $item->starts_at->toDateString())
+            ->groupBy(fn($item) => $item->starts_at->toDateString())
             ->take(7);
 
         $sameDay = $upcoming
-            ->filter(fn ($item) => $item->starts_at->isSameDay($showtime->starts_at))
+            ->filter(fn($item) => $item->starts_at->isSameDay($showtime->starts_at))
             ->values();
 
         // Load the state of every seat for this specific showtime.
@@ -56,17 +56,17 @@ class SeatMapController extends Controller
             ->orderBy('seat_number')
             ->get()
             ->groupBy('row_label')
-            ->map(fn ($seats) => $seats->map(
-                function ($seat) use ($states, $now) {
+            ->map(fn($seats) => $seats->map(
+                function ($seat) use ($states, $now, $showtime, $surcharge) {
                     $row = $states->get($seat->id);
 
                     $state = match (true) {
                         $seat->is_disabled => 'disabled',
-                        ! $row => 'disabled',
+                        !$row => 'disabled',
                         $row->status === ShowtimeSeatStatus::Sold => 'sold',
                         $row->status === ShowtimeSeatStatus::Held
-                            && $row->held_until
-                            && $row->held_until->gt($now) => 'held',
+                        && $row->held_until
+                        && $row->held_until->gt($now) => 'held',
                         default => 'available',
                     };
 
@@ -76,7 +76,9 @@ class SeatMapController extends Controller
                         'number' => $seat->seat_number,
                         'premium' => $seat->type === SeatType::Premium,
                         'state' => $state,
-                        'price' => $row?->price_cents,
+                        'price' => $row && $state === 'available'
+                            ? $showtime->base_price_cents + ($seat->type === SeatType::Premium ? $surcharge : 0)
+                            : $row?->price_cents,
                     ];
                 }
             ));

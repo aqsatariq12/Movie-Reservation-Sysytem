@@ -97,11 +97,15 @@
                             {{ ucfirst($s->status->value) }}
                         </td>
                         <td class="py-4">
-                            {{-- Only a scheduled show that has not started can be edited --}}
                             @if ($tab === 'upcoming' && $s->status->value === 'scheduled')
-                                <a href="{{ route('admin.showtimes.edit', $s) }}" class="text-[#87beff] hover:underline">Edit →</a>
+                                {{-- No sold/held seats = Edit. Booked = View (edit page opens with locked fields). --}}
+                                <a href="{{ route('admin.showtimes.edit', $s) }}" class="text-[#87beff] hover:underline">
+                                    {{ ($s->sold_count + $s->held_count) > 0 ? 'View' : 'Edit' }} →
+                                </a>
                             @else
-                                <span class="text-[#74849f]">Read-only</span>
+                                {{-- Past / cancelled: read-only panel below --}}
+                                <a href="{{ route('admin.showtimes.index', [...request()->except(['view']), 'view' => $s->id]) }}#showtime-panel"
+                                    class="text-[#a0aec5] hover:text-white hover:underline">View →</a>
                             @endif
                         </td>
                     </tr>
@@ -142,4 +146,20 @@
         <p>Once bookings exist, movie, screen and start time are locked. Cancel the show with a reason and create a
             replacement; never delete a booked show.</p>
     </div>
+        @if ($viewing)
+        <div id="showtime-panel" class="flex flex-col gap-5 rounded-[14px] border border-[#283750] bg-[#101a2d] p-6">
+            <div class="flex items-center gap-4">
+                <p class="flex-1 text-xs uppercase text-[#a0aec5]">
+                    • {{ $viewing->status->value === 'cancelled' ? 'Cancelled' : 'Past' }} · Read-only
+                </p>
+                <p class="flex-1 text-xl font-bold leading-[1.13] text-[#f4f7ff]">
+                    {{ $viewing->movie->title }} · {{ $viewing->starts_at->format('M j · H:i') }} · {{ $viewing->screen->name }}
+                </p>
+            </div>
+            <p class="text-[13px] leading-[1.45] text-[#a0aec5]">
+                Historical scheduling and booking records are view-only. Editing and cancellation are unavailable.
+            </p>
+        </div>
+    @endif
+
 @endsection

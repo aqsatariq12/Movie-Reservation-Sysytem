@@ -14,6 +14,8 @@ use App\Models\ShowtimeSeat;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Enums\SeatType;
+use App\Models\Seat;
 
 class HoldSeatsAction
 {
@@ -39,13 +41,7 @@ class HoldSeatsAction
             $this->fail("Select between 1 and {$max} seats.");
         }
 
-        return DB::transaction(function () use (
-            $user,
-            $showtime,
-            $seatIds,
-            $holdMinutes,
-            $cutoffMinutes
-        ) {
+        return DB::transaction(function () use ($user, $showtime, $seatIds, $holdMinutes, $cutoffMinutes) {
             $now = now();
 
             $show = Showtime::query()->findOrFail($showtime->id);
@@ -54,9 +50,11 @@ class HoldSeatsAction
                 $this->fail('This showtime is not on sale.');
             }
 
-            if ($now->gte(
-                $show->starts_at->copy()->subMinutes($cutoffMinutes)
-            )) {
+            if (
+                $now->gte(
+                    $show->starts_at->copy()->subMinutes($cutoffMinutes)
+                )
+            ) {
                 $this->fail('Sales for this showtime have closed.');
             }
 
@@ -93,7 +91,7 @@ class HoldSeatsAction
                     return false;
                 }
 
-                return ! (
+                return !(
                     $row->status === ShowtimeSeatStatus::Held
                     && $row->held_until !== null
                     && $row->held_until->lte($now)
@@ -104,6 +102,19 @@ class HoldSeatsAction
                 $this->fail(
                     'Some selected seats were just taken. No seats were held.'
                 );
+            }
+            // Always price from the showtime's current base price, never from a stale seat row.
+            $surcharge = Setting::readInt('premium_surcharge_cents', 200);
+            $premiumIds = Seat::query()
+                ->whereIn('id', $seatIds)
+                ->where('type', SeatType::Premium->value)
+                ->pluck('id')
+                ->all();
+
+            foreach ($rows as $row) {
+                $row->price_cents = $show->base_price_cents
+                    + (in_array($row->seat_id, $premiumIds, true) ? $surcharge : 0);
+                $row->save();
             }
 
             // Close old holds attached to seats whose hold time has expired.
@@ -157,7 +168,7 @@ class HoldSeatsAction
             ]);
 
             $booking->bookingSeats()->createMany(
-                $rows->map(fn (ShowtimeSeat $row) => [
+                $rows->map(fn(ShowtimeSeat $row) => [
                     'seat_id' => $row->seat_id,
                     'price_cents' => $row->price_cents,
                 ])->all()
