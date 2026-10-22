@@ -72,6 +72,11 @@
         </aside>
 
         <main class="flex min-w-0 flex-1 flex-col gap-6 p-9">
+             @if (session('status'))
+                <div class="rounded-lg border border-[#347bff]/30 bg-[#347bff]/10 px-4 py-3 text-sm text-[#f4f7ff]">
+                    {{ session('status') }}
+                </div>
+            @endif
             @yield('content')
         </main>
     </div>

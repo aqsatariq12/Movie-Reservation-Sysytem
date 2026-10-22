@@ -94,7 +94,7 @@ class GetHomePageData
 
         $image = $movie->slug === 'the-last-horizon'
             ? 'images/cinebook/hero-last-horizon.png'
-            : ($movie->poster_path ?: 'images/cinebook/hero-last-horizon.png');
+            : ($movie->poster_url ?: 'images/cinebook/hero-last-horizon.png');
 
         return [
             'title' => $movie->title,
@@ -145,6 +145,7 @@ class GetHomePageData
     {
         $showtimes = Showtime::query()
             ->with(['movie', 'screen'])
+            ->whereHas('movie', fn($movie) => $movie->visible())
             ->scheduled()
             ->onDate($date)
             ->orderBy('starts_at')
@@ -216,7 +217,7 @@ class GetHomePageData
                         ? $nextShowtime->starts_at->format('D · H:i')
                         : 'No upcoming showtimes',
 
-                    'poster' => $movie->poster_path,
+                    'poster' => $movie->poster_url,
                     'url' => $this->movieUrl($movie->slug),
                 ];
             })
@@ -243,7 +244,7 @@ class GetHomePageData
                     'release_date' => $movie->release_date,
                     'tagline' => 'Coming soon to CineBook.',
                     'description' => $movie->synopsis,
-                    'poster' => $movie->poster_path,
+                    'poster' => $movie->poster_url,
                     'url' => $this->movieUrl($movie->slug),
                 ];
             })

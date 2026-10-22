@@ -20,7 +20,7 @@
 
     <form id="seat-form" method="POST" action="{{ route('admin.screens.sync-seats', $screen) }}">
         @csrf
-        @method('PUT')
+        
         <input type="hidden" name="disabled_seats" id="disabled_seats" value="{{ $disabledKeys }}">
     </form>
 

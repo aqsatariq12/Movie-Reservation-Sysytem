@@ -8,6 +8,8 @@ use App\Http\Controllers\Customer\HoldController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\ScreenController;
 use App\Http\Controllers\Admin\ShowtimeController;
+use App\Http\Controllers\Admin\MovieController as AdminMovieController;
+use App\Http\Controllers\Admin\GenreController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -58,6 +60,16 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Screen management
         Route::resource('screens', ScreenController::class)
             ->except(['edit']);
+
+        // Movie management
+        Route::resource('movies', AdminMovieController::class)
+            ->except(['show', 'destroy']);
+
+        Route::patch('/movies/{movie}/archive', [AdminMovieController::class, 'archive'])
+            ->name('movies.archive');
+        // Genre management (create/edit/delete states live on the index page)
+        Route::resource('genres', GenreController::class)
+            ->only(['index', 'store', 'update', 'destroy']);
 
         Route::post('/screens/{screen}/sync-seats', [ScreenController::class, 'syncSeats'])
             ->name('screens.sync-seats');

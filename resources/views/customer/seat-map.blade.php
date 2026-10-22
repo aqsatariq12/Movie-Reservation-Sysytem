@@ -61,9 +61,9 @@
                 {{-- Movie and showtime details --}}
                 <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                     <div class="flex gap-4">
-                        @if ($movie->poster_path)
+                                                @if ($movie->poster_url)
                             <img
-                                src="{{ asset('/' . $movie->poster_path) }}"
+                                src="{{ $movie->poster_url }}"
                                 alt="{{ $movie->title }} poster"
                                 class="h-[150px] w-[100px] shrink-0 rounded-xl object-cover shadow-sm sm:h-[170px] sm:w-[112px]"
                             >

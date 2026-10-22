@@ -32,9 +32,9 @@
                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                     <div class="flex flex-col gap-5 sm:flex-row">
                         <div class="flex h-[150px] w-[105px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-50 text-3xl font-bold text-blue-700 sm:h-[175px] sm:w-[120px]">
-                            @if ($movie->poster_path)
+                            @if ($movie->poster_url)
                                 <img
-                                    src="{{ asset('/' . $movie->poster_path) }}"
+                                    src="{{ $movie->poster_url }}"
                                     alt="{{ $movie->title }} poster"
                                     class="h-full w-full object-cover"
                                 >

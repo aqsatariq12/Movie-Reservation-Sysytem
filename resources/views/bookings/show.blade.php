@@ -70,8 +70,8 @@
                         class="flex gap-5 rounded-[24px] border border-[#e3d8c8] bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)]">
                         <div
                             class="h-[180px] w-[104px] shrink-0 overflow-hidden rounded-[10px] bg-gradient-to-br from-[#1f2937] to-[#347bff]">
-                            @if ($movie->poster_path)
-                                <img src="{{ asset('/' . $movie->poster_path) }}" alt="{{ $movie->title }} poster"
+                            @if ($movie->poster_url)
+                                <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }} poster"
                                     class="h-full w-full object-cover">
                             @endif
                         </div>

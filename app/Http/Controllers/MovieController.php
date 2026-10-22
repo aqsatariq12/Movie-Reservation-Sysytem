@@ -6,7 +6,7 @@ use App\Models\Genre;
 use App\Models\Movie;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-
+use App\Enums\MovieStatus;
 class MovieController extends Controller
 {
 
@@ -22,6 +22,7 @@ class MovieController extends Controller
         $showDate = $validated['show_date'] ?? null;
 
         $movies = Movie::with('genres')
+            ->visible()
             ->search($search)
             ->inGenre($genreSlug)
             ->when($showDate, function ($query) use ($showDate) {
@@ -49,6 +50,8 @@ class MovieController extends Controller
 
     public function show(Movie $movie): View
     {
+        abort_if($movie->status === MovieStatus::Archived, 404);
+
         $movie->load([
             'genres',
             'showtimes' => function ($query) {

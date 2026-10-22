@@ -64,6 +64,14 @@ class Movie extends Model
     {
         $query->where('status', MovieStatus::ComingSoon->value);
     }
+        /** Movies customers may discover. Archived movies are hidden. */
+    public function scopeVisible(Builder $query): void
+    {
+        $query->whereIn('status', [
+            MovieStatus::NowShowing->value,
+            MovieStatus::ComingSoon->value,
+        ]);
+    }
 
     public function scopeSearch(Builder $query, ?string $term): void
     {
