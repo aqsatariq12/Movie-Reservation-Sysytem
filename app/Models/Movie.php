@@ -2,9 +2,107 @@
 
 namespace App\Models;
 
+use App\Enums\MovieStatus;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Movie extends Model
 {
-    //
+    use HasFactory;
+
+    protected $fillable = [
+        'title',
+        'slug',
+        'synopsis',
+        'duration_minutes',
+        'rating',
+        'poster_path',
+        'trailer_url',
+        'release_date',
+        'status',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'release_date' => 'date',
+            'status' => MovieStatus::class,
+        ];
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    public function genres(): BelongsToMany
+    {
+        return $this->belongsToMany(Genre::class);
+    }
+
+    public function showtimes(): HasMany
+    {
+        return $this->hasMany(Showtime::class);
+    }
+
+    /** Movies currently showing. */
+    public function scopeNowShowing(Builder $query): void
+    {
+        $query->where('status', MovieStatus::NowShowing->value);
+    }
+
+    /** Movies coming soon. */
+    public function scopeComingSoon(Builder $query): void
+    {
+        $query->where('status', MovieStatus::ComingSoon->value);
+    }
+
+    /** Hide archived movies from customer discovery. */
+    public function scopeVisible(Builder $query): void
+    {
+        $query->whereIn('status', [
+            MovieStatus::NowShowing->value,
+            MovieStatus::ComingSoon->value,
+        ]);
+    }
+
+    public function scopeSearch(Builder $query, ?string $term): void
+    {
+        $term = trim((string) $term);
+
+        if ($term !== '') {
+            $query->where('title', 'like', '%' . $term . '%');
+        }
+    }
+
+    public function scopeInGenre(Builder $query, ?string $genreSlug): void
+    {
+        if ($genreSlug) {
+            $query->whereHas(
+                'genres',
+                fn (Builder $genres) => $genres->where('genres.slug', $genreSlug)
+            );
+        }
+    }
+
+    /**
+     * Return the full URL for a seeded or uploaded poster.
+     */
+    protected function posterUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            if (! $this->poster_path) {
+                return null;
+            }
+
+            return str_starts_with($this->poster_path, 'images/')
+                ? asset($this->poster_path)
+                : Storage::disk('public')->url($this->poster_path);
+        });
+    }
 }

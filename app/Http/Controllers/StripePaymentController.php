@@ -24,9 +24,9 @@ class StripePaymentController extends Controller
             403
         );
 
-        if ($booking->status !== 'pending_payment') {
+        if ($booking->status !== \App\Enums\BookingStatus::PendingPayment) {
             if (
-                $booking->status === 'cancelled' &&
+                $booking->status === \App\Enums\BookingStatus::Cancelled &&
                 $booking->hold_id &&
                 Hold::whereKey($booking->hold_id)
                     ->where('status', 'released')
@@ -62,7 +62,7 @@ class StripePaymentController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedBooking->status !== 'pending_payment') {
+            if ($lockedBooking->status !== \App\Enums\BookingStatus::PendingPayment) {
                 return;
             }
 
@@ -108,7 +108,7 @@ class StripePaymentController extends Controller
         );
 
         abort_unless(
-            $booking->status === 'pending_payment',
+            $booking->status === \App\Enums\BookingStatus::PendingPayment,
             403,
             'This booking cannot be paid.'
         );
@@ -193,7 +193,7 @@ class StripePaymentController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if ($lockedBooking->status !== 'pending_payment') {
+                if ($lockedBooking->status !== \App\Enums\BookingStatus::PendingPayment) {
                     throw new \RuntimeException(
                         'Booking is no longer eligible for payment.'
                     );
@@ -284,8 +284,8 @@ class StripePaymentController extends Controller
         $booking = $booking->fresh();
 
         $isPaid = $session->payment_status === 'paid'
-            && $payment->status === 'paid'
-            && $booking->status === 'confirmed';
+            && $payment->status === \App\Enums\PaymentStatus::Paid
+            && $booking->status === \App\Enums\BookingStatus::Confirmed;
 
         return view('payment.success', [
             'payment' => $payment,

@@ -2,12 +2,21 @@
 
 namespace App\Models;
 
+use App\Enums\ShowtimeStatus;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Showtime extends Model
 {
+    use HasFactory;
+
+    public const TURNAROUND_MINUTES = 15;
+
     protected $fillable = [
         'movie_id',
         'screen_id',
@@ -23,6 +32,7 @@ class Showtime extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'base_price_cents' => 'integer',
+            'status' => ShowtimeStatus::class,
         ];
     }
 
@@ -36,6 +46,11 @@ class Showtime extends Model
         return $this->belongsTo(Screen::class);
     }
 
+    public function showtimeSeats(): HasMany
+    {
+        return $this->hasMany(ShowtimeSeat::class);
+    }
+
     public function holds(): HasMany
     {
         return $this->hasMany(Hold::class);
@@ -44,5 +59,49 @@ class Showtime extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    public function scopeScheduled(Builder $query): void
+    {
+        $query->where('status', ShowtimeStatus::Scheduled->value);
+    }
+
+    public function scopeUpcoming(Builder $query): void
+    {
+        $query->where('starts_at', '>=', now());
+    }
+
+    /** Showtimes that start on the given calendar day. */
+    public function scopeOnDate(Builder $query, CarbonInterface $date): void
+    {
+        $query->whereBetween('starts_at', [
+            $date->copy()->startOfDay(),
+            $date->copy()->endOfDay(),
+        ]);
+    }
+
+    public function hasActiveBookings(): bool
+    {
+        return $this->bookings()
+            ->whereIn('status', ['pending_payment', 'confirmed'])
+            ->exists();
+    }
+
+    public static function setting(string $key, int $default): int
+    {
+        return (int) (
+            DB::table('settings')->where('key', $key)->value('value')
+            ?? $default
+        );
+    }
+
+    public static function premiumSurchargeCents(): int
+    {
+        return self::setting('premium_surcharge_cents', 200);
+    }
+
+    public static function money(int $cents): string
+    {
+        return '$' . number_format($cents / 100, 2);
     }
 }

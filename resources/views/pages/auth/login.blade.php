@@ -1,58 +1,66 @@
-<x-layouts::auth :title="__('Log in')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email and password below to log in')" />
+@php
+    // Laravel stores the page a guest tried to open in "url.intended".
+    // Once the seat-selection pages exist, a visitor sent here from a showtime
+    // gets the "your showtime is waiting" notice from the design.
+    $intended = session('url.intended');
+    $returningToShowtime = is_string($intended) && str_contains($intended, 'showtime');
+@endphp
 
-        <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+<x-layouts.cinebook-auth
+    :title="__('Log in')"
+    heading="Welcome back"
+    description="Sign in to reserve your next movie night."
+>
+    @if (session('status'))
+        <x-cinebook.notice role="status">{{ session('status') }}</x-cinebook.notice>
+    @endif
 
+    @if ($returningToShowtime)
+        <x-cinebook.notice>
+            <p>ⓘ Your showtime is waiting</p>
+            <p>After sign-in, return to seat selection. Seats aren’t held yet.</p>
+        </x-cinebook.notice>
+    @endif
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
-            @csrf
+    <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-7">
+        @csrf
 
-            <!-- Email Address -->
-            <flux:input
-                name="email"
-                :label="__('Email address')"
-                :value="old('email')"
-                type="email"
-                required
-                autofocus
-                autocomplete="email"
-                placeholder="email@example.com"
-            />
+        <x-cinebook.field
+            name="email"
+            label="Email address"
+            type="email"
+            :value="old('email')"
+            autocomplete="email"
+            required
+            autofocus
+        />
 
-            <!-- Password -->
-            <div class="relative">
-                <flux:input
-                    name="password"
-                    :label="__('Password')"
-                    type="password"
-                    required
-                    autocomplete="current-password"
-                    :placeholder="__('Password')"
-                    viewable
-                />
+        <x-cinebook.field
+            name="password"
+            label="Password"
+            type="password"
+            autocomplete="current-password"
+            required
+        />
 
-                @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
-                        {{ __('Forgot your password?') }}
-                    </flux:link>
-                @endif
-            </div>
+        <div class="flex items-center gap-4 text-[13px] leading-[1.45]">
+            <p class="flex-1 text-cb-muted">Secure email + password access</p>
 
-            <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
-
-            <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
-                    {{ __('Log in') }}
-                </flux:button>
-            </div>
-        </form>
-
-        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
-            <span>{{ __('Don\'t have an account?') }}</span>
-            <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
+            @if (Route::has('password.request'))
+                <a href="{{ route('password.request') }}" class="text-cb-brand hover:underline">Forgot password?</a>
+            @endif
         </div>
-    </div>
-</x-layouts::auth>
+
+        <x-cinebook.submit-button data-test="login-button">
+            {{ $returningToShowtime ? 'Sign in & return to showtime →' : 'Sign in →' }}
+        </x-cinebook.submit-button>
+    </form>
+
+    <x-cinebook.auth-footer>
+        @if (Route::has('register'))
+            <p>
+                <a href="{{ route('register') }}" class="hover:text-cb-brand">New to CineBook? Create a customer account →</a>
+            </p>
+        @endif
+    </x-cinebook.auth-footer>
+</x-layouts.cinebook-auth>

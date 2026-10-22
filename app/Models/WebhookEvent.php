@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\WebhookEventStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WebhookEvent extends Model
 {
+    use HasFactory;
+
     protected $table = 'webhook_events';
 
     protected $fillable = [
@@ -20,7 +25,13 @@ class WebhookEvent extends Model
     {
         return [
             'booking_id' => 'integer',
+            'status' => WebhookEventStatus::class,
             'processed_at' => 'datetime',
         ];
+    }
+
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
     }
 }

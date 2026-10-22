@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Payment extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'booking_id',
         'provider',
@@ -22,6 +26,7 @@ class Payment extends Model
     protected function casts(): array
     {
         return [
+            'status' => PaymentStatus::class,
             'paid_at' => 'datetime',
             'amount_cents' => 'integer',
         ];

@@ -268,13 +268,13 @@ class StripeWebhookController extends Controller
             );
         }
 
-        if ($payment->status === 'refunded') {
+        if ($payment->status === \App\Enums\PaymentStatus::Refunded) {
     return;
 }
 
 if (
-    $payment->status === 'paid' &&
-    !($targetStatus === 'paid' && $booking->status === 'cancelled')
+    $payment->status === \App\Enums\PaymentStatus::Paid &&
+    !($targetStatus === 'paid' &&  $booking->status === \App\Enums\BookingStatus::Cancelled)
 ) {
     return;
 }
@@ -304,7 +304,7 @@ if ($targetStatus === 'paid') {
     ]);
 
     // A payment arriving after cancellation must be refunded.
-    if ($booking->status === 'cancelled') {
+    if ($booking->status === \App\Enums\BookingStatus::Cancelled) {
 
 $existingRefund = DB::table('refunds')
     ->where('payment_id', $payment->id)
@@ -352,7 +352,7 @@ if ($existingRefund) {
         );
     }
 
-    if ($booking->status === 'pending_payment') {
+    if ($booking->status === \App\Enums\BookingStatus::PendingPayment) {
         $booking->update([
             'status' => 'confirmed',
             'confirmed_at' => now(),
@@ -362,14 +362,14 @@ if ($existingRefund) {
     return;
 }
 
-       if ($payment->status === 'pending') {
+       if ($payment->status === \App\Enums\PaymentStatus::Pending) {
     $payment->update([
         'status' => $targetStatus,
     ]);
 
     if (
         in_array($targetStatus, ['expired', 'failed'], true) &&
-        $booking->status === 'pending_payment'
+        $booking->status === \App\Enums\BookingStatus::PendingPayment
     ) {
         $booking->update([
             'status' => 'cancelled',

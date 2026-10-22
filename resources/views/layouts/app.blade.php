@@ -1,5 +1,7 @@
-<x-layouts::app.sidebar :title="$title ?? null">
+<x-layouts.cinebook :title="$title ?? 'CineBook Settings'">
     <flux:main>
         {{ $slot }}
     </flux:main>
-</x-layouts::app.sidebar>
+
+    @fluxScripts
+</x-layouts.cinebook>
