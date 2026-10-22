@@ -1,4 +1,18 @@
 <x-layouts::site :title="__('Hold expired')">
+    @php
+        $showtime = $booking->showtime;
+        $movie = $showtime?->movie;
+        $screen = $showtime?->screen;
+
+        $seatNames = \Illuminate\Support\Facades\DB::table('booking_seats')
+            ->where('booking_id', $booking->id)
+            ->join('seats', 'booking_seats.seat_id', '=', 'seats.id')
+            ->pluck('seats.seat_number')
+            ->implode(', ');
+
+        $hold = $booking->hold;
+    @endphp
+
     <div class="mx-auto max-w-[1312px] px-6 pt-10 lg:px-0">
         <div class="rounded-2xl border border-[#1f2a44] bg-[#0a1020] p-8 sm:p-12">
 
@@ -15,17 +29,35 @@
             <h1 class="mt-6 text-4xl font-bold leading-tight sm:text-5xl">Your time ran out.</h1>
 
             <p class="mt-6 text-sm text-[#9aa3b2]">
-                The 10-minute hold expired at 18:30:00. No verified payment was received in time, so D7 and D8 were released together.
+                Your booking hold has expired. Seat availability depends on the current booking and hold status.
             </p>
 
             <div class="mt-6 space-y-5 text-sm text-[#9aa3b2]">
-                <p>Booking · CB-081011-6682</p>
-                <p>Movie · The Last Horizon · Screen 1 · 18:30</p>
+                <p>Booking · {{ $booking->booking_reference }}</p>
+
+                <p>
+                    Movie · {{ $movie?->title ?? 'Movie details unavailable' }}
+                    @if ($screen?->name)
+                        · {{ $screen->name }}
+                    @endif
+                    @if ($showtime?->starts_at)
+                        · {{ \Illuminate\Support\Carbon::parse($showtime->starts_at)->format('M d · H:i') }}
+                    @endif
+                </p>
+
+                <p>Seats · {{ $seatNames !== '' ? $seatNames : 'Not available' }}</p>
+
+                @if ($hold?->held_until)
+                    <p>
+                        Hold expired at ·
+                        {{ \Illuminate\Support\Carbon::parse($hold->held_until)->format('M d, Y · H:i:s') }}
+                    </p>
+                @endif
             </div>
 
             <div class="mt-8 rounded-lg bg-[#17294f] p-4 text-sm leading-relaxed">
                 <p class="font-semibold text-blue-300">ⓘ No ticket was issued</p>
-                <p>Choose from the seats currently available. A new hold starts only when you press Hold seats again.</p>
+                <p>Choose from the seats currently available. Check the booking status before starting a new reservation.</p>
             </div>
 
             <div class="mt-6 flex flex-wrap gap-3">

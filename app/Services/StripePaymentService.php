@@ -41,7 +41,9 @@ class StripePaymentService
         'success_url' => route('payment.success')
          . '?session_id={CHECKOUT_SESSION_ID}',
 
-         'cancel_url' => route('payment.cancel'),
+       'cancel_url' => route('payment.cancel', [
+    'booking_id' => $booking->id,
+]),
         ]);
 
          return $session;
@@ -50,5 +52,37 @@ class StripePaymentService
     {
         return $this->stripe->checkout->sessions->retrieve($sessionId);
     }
+public function expireCheckoutSession(string $sessionId): \Stripe\Checkout\Session
+{
+    return $this->stripe->checkout->sessions->expire($sessionId);
+}
+
+public function createRefund(
+    string $paymentIntentId,
+    ?int $amountCents = null,
+    ?string $idempotencyKey = null
+): \Stripe\Refund {
+    $params = [
+        'payment_intent' => $paymentIntentId,
+    ];
+
+    if ($amountCents !== null) {
+        $params['amount'] = $amountCents;
+    }
+
+    $options = [];
+
+    if ($idempotencyKey !== null) {
+        $options['idempotency_key'] = $idempotencyKey;
+    }
+
+    return $this->stripe->refunds->create($params, $options);
+}
+
+
+public function retrievePaymentIntent(string $paymentIntentId): \Stripe\PaymentIntent
+{
+    return $this->stripe->paymentIntents->retrieve($paymentIntentId);
+}
 
 }

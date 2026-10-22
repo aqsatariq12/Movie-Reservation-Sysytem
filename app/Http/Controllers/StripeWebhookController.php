@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Payment;
+use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 use UnexpectedValueException;
+use App\Services\StripePaymentService;
 
 class StripeWebhookController extends Controller
 {
@@ -20,7 +23,7 @@ class StripeWebhookController extends Controller
         $signature = $request->header('Stripe-Signature');
         $secret = config('stripe.webhook_secret');
 
-        if (! is_string($secret) || $secret === '') {
+        if (!is_string($secret) || $secret === '') {
             Log::error('Stripe webhook secret is not configured.');
 
             return response()->json([
@@ -28,7 +31,7 @@ class StripeWebhookController extends Controller
             ], 500);
         }
 
-        if (! is_string($signature) || $signature === '') {
+        if (!is_string($signature) || $signature === '') {
             return response()->json([
                 'error' => 'Missing Stripe signature.',
             ], 400);
@@ -40,11 +43,8 @@ class StripeWebhookController extends Controller
                 $signature,
                 $secret
             );
-        } catch (
-            UnexpectedValueException |
-            SignatureVerificationException $exception
-        ) {
-            Log::warning('Stripe webhook signature/payload rejected.', [
+        } catch (UnexpectedValueException | SignatureVerificationException $exception) {
+            Log::warning('Stripe webhook rejected.', [
                 'message' => $exception->getMessage(),
             ]);
 
@@ -53,159 +53,139 @@ class StripeWebhookController extends Controller
             ], 400);
         }
 
-        if (! in_array($event->type, [
-            'checkout.session.completed',
-            'checkout.session.async_payment_succeeded',
-        ], true)) {
-            return response()->json([
-                'received' => true,
-                'ignored' => true,
-            ]);
-        }
-
-        $session = $event->data->object;
-
-        if (($session->payment_status ?? '') !== 'paid') {
-            return response()->json([
-                'received' => true,
-                'payment' => 'not_paid',
-            ]);
-        }
-
-        $sessionId = $session->id ?? null;
-        $bookingId = $session->metadata->booking_id ?? null;
-        $bookingReference = $session->metadata->booking_reference ?? null;
-
-        if (
-            ! is_string($sessionId) ||
-            ! is_string($bookingId) ||
-            ! ctype_digit($bookingId) ||
-            ! is_string($bookingReference) ||
-            $bookingReference === ''
-        ) {
-            Log::warning('Stripe webhook metadata rejected.', [
-                'session_id_present' => is_string($sessionId),
-                'booking_id_type' => gettype($bookingId),
-                'booking_reference_type' => gettype($bookingReference),
-            ]);
-
-            return response()->json([
-                'error' => 'Invalid booking metadata.',
-            ], 400);
-        }
-
         try {
-            DB::transaction(function () use (
-                $event,
-                $session,
-                $sessionId,
-                $bookingId,
-                $bookingReference
-            ): void {
-                DB::table('webhook_events')->insert([
-                    'provider_event_id' => $event->id,
-                    'event_type' => $event->type,
-                    'status' => 'processing',
-                    'booking_id' => (int) $bookingId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            $result = DB::transaction(function () use ($event) {
+                $object = $event->data->object;
 
-                $payment = Payment::query()
-                    ->where('provider', 'stripe')
-                    ->where('provider_session_id', $sessionId)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                $sessionEvents = [
+                    'checkout.session.completed',
+                    'checkout.session.async_payment_succeeded',
+                    'checkout.session.async_payment_failed',
+                    'checkout.session.expired',
+                ];
 
-                $booking = Booking::query()
-                    ->whereKey($payment->booking_id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                $bookingId = null;
 
-                if (
-                    (string) $booking->id !== $bookingId ||
-                    (string) $booking->id !== (string) $payment->booking_id ||
-                    (string) $booking->booking_reference !== $bookingReference
-                ) {
-                    throw new \RuntimeException(
-                        'Stripe booking metadata does not match.'
-                    );
+                if (in_array($event->type, $sessionEvents, true)) {
+                    $metadataId = $object->metadata->booking_id ?? null;
+
+                    if (is_string($metadataId) && ctype_digit($metadataId)) {
+                        $bookingId = (int) $metadataId;
+                    }
                 }
 
-                if (
-                    (int) ($session->amount_total ?? -1) !==
-                        (int) $payment->amount_cents ||
-                    strtolower((string) ($session->currency ?? '')) !==
-                        strtolower((string) $payment->currency)
-                ) {
-                    throw new \RuntimeException(
-                        'Stripe payment amount or currency does not match.'
-                    );
-                }
-
-                if (! in_array($booking->status, [
-                    'pending_payment',
-                    'confirmed',
-                ], true)) {
-                    throw new \RuntimeException(
-                        'Booking is not in a payable state.'
-                    );
-                }
-
-                $paymentIntent = $session->payment_intent ?? null;
-
-                if (is_object($paymentIntent)) {
-                    $paymentIntent = $paymentIntent->id ?? null;
-                }
-
-                $payment->update([
-                    'provider_payment_id' => is_string($paymentIntent)
-                        ? $paymentIntent
-                        : null,
-                    'status' => 'paid',
-                    'paid_at' => $payment->paid_at ?? now(),
-                ]);
-
-                if ($booking->status === 'pending_payment') {
-                    $booking->update([
-                        'status' => 'confirmed',
-                        'confirmed_at' => now(),
+                // Insert a unique event record. A duplicate event must not
+                // be processed a second time.
+                try {
+                    DB::table('webhook_events')->insert([
+                        'provider_event_id' => $event->id,
+                        'event_type' => $event->type,
+                        'status' => 'processing',
+                        'booking_id' => $bookingId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
+               } catch (QueryException $exception) {
+    $existingEvent = DB::table('webhook_events')
+        ->where('provider_event_id', $event->id)
+        ->lockForUpdate()
+        ->first();
+
+    if (!$existingEvent) {
+        throw $exception;
+    }
+
+    if (in_array($existingEvent->status, ['processed', 'ignored'], true)) {
+        return 'duplicate';
+    }
+
+    // Retry an event that was previously left in processing.
+    DB::table('webhook_events')
+        ->where('provider_event_id', $event->id)
+        ->update([
+            'status' => 'processing',
+            'processed_at' => null,
+            'updated_at' => now(),
+        ]);
+}
+
+                $status = 'processed';
+
+                $hasValidSessionMetadata =
+                    is_string($object->metadata->booking_id ?? null) &&
+                    ctype_digit($object->metadata->booking_id) &&
+                    is_string($object->metadata->booking_reference ?? null) &&
+                    trim($object->metadata->booking_reference) !== '';
+
+                if (
+                    in_array($event->type, $sessionEvents, true) &&
+                    !$hasValidSessionMetadata
+                ) {
+                    // Stripe CLI fixture events are not linked to a real
+                    // local booking, so ignore them safely.
+                    $status = 'ignored';
+                } else {
+                    switch ($event->type) {
+                        case 'checkout.session.completed':
+                        case 'checkout.session.async_payment_succeeded':
+                            $this->processCheckoutSession($object, 'paid');
+                            break;
+
+                        case 'checkout.session.async_payment_failed':
+                            $this->processCheckoutSession($object, 'failed');
+                            break;
+
+                        case 'checkout.session.expired':
+                            $this->processCheckoutSession($object, 'expired');
+                            break;
+
+                        case 'refund.created':
+                        case 'refund.updated':
+                            $this->processRefund($object);
+                            break;
+
+                        case 'charge.refunded':
+                            foreach (($object->refunds->data ?? []) as $refund) {
+                                $this->processRefund($refund);
+                            }
+                            break;
+
+                        default:
+                            $status = 'ignored';
+                            break;
+                    }
                 }
 
                 DB::table('webhook_events')
                     ->where('provider_event_id', $event->id)
                     ->update([
-                        'status' => 'processed',
+                        'status' => $status,
                         'processed_at' => now(),
                         'updated_at' => now(),
                     ]);
+
+                return $status;
             });
 
-        } catch (\Illuminate\Database\QueryException $exception) {
+            return response()->json([
+                'received' => true,
+                'status' => $result,
+            ]);
+        } catch (QueryException $exception) {
             Log::error('Stripe webhook database failure.', [
+                'event_id' => $event->id,
                 'message' => $exception->getMessage(),
             ]);
-
-            if (
-                DB::table('webhook_events')
-                    ->where('provider_event_id', $event->id)
-                    ->exists()
-            ) {
-                return response()->json([
-                    'received' => true,
-                    'duplicate' => true,
-                ]);
-            }
 
             report($exception);
 
             return response()->json([
                 'error' => 'Webhook database operation failed.',
             ], 500);
-
         } catch (\Throwable $exception) {
             Log::error('Stripe webhook processing failure.', [
+                'event_id' => $event->id,
+                'event_type' => $event->type,
                 'message' => $exception->getMessage(),
             ]);
 
@@ -215,10 +195,310 @@ class StripeWebhookController extends Controller
                 'error' => 'Webhook processing failed.',
             ], 500);
         }
+    }
 
-        return response()->json([
-            'received' => true,
-            'processed' => true,
+    private function processCheckoutSession(
+        object $session,
+        string $targetStatus
+    ): void {
+        $sessionId = $session->id ?? null;
+        $bookingId = $session->metadata->booking_id ?? null;
+        $bookingReference = $session->metadata->booking_reference ?? null;
+
+        if (
+            !is_string($sessionId) ||
+            !is_string($bookingId) ||
+            !ctype_digit($bookingId) ||
+            !is_string($bookingReference) ||
+            trim($bookingReference) === ''
+        ) {
+            throw new \RuntimeException(
+                'Invalid Stripe checkout session metadata.'
+            );
+        }
+
+        $payment = Payment::query()
+            ->where('provider', 'stripe')
+            ->where('provider_session_id', $sessionId)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$payment) {
+            throw new \RuntimeException(
+                'No local payment matches this Stripe checkout session.'
+            );
+        }
+
+        $booking = Booking::query()
+            ->whereKey($payment->booking_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$booking) {
+            throw new \RuntimeException(
+                'No local booking matches this Stripe payment.'
+            );
+        }
+
+        if (
+            (string) $booking->id !== $bookingId ||
+            (string) $booking->booking_reference !== $bookingReference
+        ) {
+            throw new \RuntimeException(
+                'Stripe booking metadata does not match.'
+            );
+        }
+
+        if (
+            isset($session->amount_total) &&
+            (int) $session->amount_total !== (int) $payment->amount_cents
+        ) {
+            throw new \RuntimeException(
+                'Stripe payment amount does not match.'
+            );
+        }
+
+        if (
+            isset($session->currency) &&
+            strtolower((string) $session->currency) !==
+            strtolower((string) $payment->currency)
+        ) {
+            throw new \RuntimeException(
+                'Stripe currency does not match.'
+            );
+        }
+
+        if ($payment->status === 'refunded') {
+    return;
+}
+
+if (
+    $payment->status === 'paid' &&
+    !($targetStatus === 'paid' && $booking->status === 'cancelled')
+) {
+    return;
+}
+
+if ($targetStatus === 'paid') {
+    if (($session->payment_status ?? '') !== 'paid') {
+        return;
+    }
+
+    $paymentIntent = $session->payment_intent ?? null;
+
+    if (is_object($paymentIntent)) {
+        $paymentIntent = $paymentIntent->id ?? null;
+    }
+
+    if (!is_string($paymentIntent) || $paymentIntent === '') {
+        throw new \RuntimeException(
+            'Paid Stripe session has no payment intent.'
+        );
+    }
+
+    // Save the successful Stripe payment first.
+    $payment->update([
+        'provider_payment_id' => $paymentIntent,
+        'status' => 'paid',
+        'paid_at' => $payment->paid_at ?? now(),
+    ]);
+
+    // A payment arriving after cancellation must be refunded.
+    if ($booking->status === 'cancelled') {
+
+$existingRefund = DB::table('refunds')
+    ->where('payment_id', $payment->id)
+    ->where('reason', 'late_payment_after_booking_cancelled')
+    ->orderByDesc('id')
+    ->first();
+
+if ($existingRefund && $existingRefund->provider_refund_id) {
+    if ($existingRefund->status === 'succeeded') {
+        $payment->update(['status' => 'refunded']);
+    }
+
+    return;
+}
+
+if ($existingRefund) {
+    $refundId = $existingRefund->id;
+} else {
+    $refundId = DB::table('refunds')->insertGetId([
+        'payment_id' => $payment->id,
+        'amount_cents' => (int) $payment->amount_cents,
+        'provider_refund_id' => null,
+        'status' => 'pending',
+        'reason' => 'late_payment_after_booking_cancelled',
+        'requested_at' => now(),
+        'completed_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
+
+
+       // Refund will be processed by stripe:reconcile after this transaction commits.
+
+        // Keep the booking cancelled.
+        return;
+    }
+
+    if (!in_array($booking->status, [
+        'pending_payment',
+        'confirmed',
+    ], true)) {
+        throw new \RuntimeException(
+            'Booking is not in a payable state.'
+        );
+    }
+
+    if ($booking->status === 'pending_payment') {
+        $booking->update([
+            'status' => 'confirmed',
+            'confirmed_at' => now(),
         ]);
+    }
+
+    return;
+}
+
+       if ($payment->status === 'pending') {
+    $payment->update([
+        'status' => $targetStatus,
+    ]);
+
+    if (
+        in_array($targetStatus, ['expired', 'failed'], true) &&
+        $booking->status === 'pending_payment'
+    ) {
+        $booking->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+        ]);
+
+        if ($booking->hold_id) {
+            DB::table('holds')
+                ->where('id', $booking->hold_id)
+                ->where('status', 'active')
+                ->update([
+                    'status' => 'expired',
+                    'updated_at' => now(),
+                ]);
+
+            DB::table('showtime_seats')
+                ->where('hold_id', $booking->hold_id)
+                ->where('status', 'held')
+                ->update([
+                    'status' => 'available',
+                    'hold_id' => null,
+                    'booking_id' => null,
+                    'held_until' => null,
+                    'updated_at' => now(),
+                ]);
+        }
+    }
+}
+    }
+
+    private function processRefund(object $refund): void
+    {
+        $refundId = $refund->id ?? null;
+        $paymentIntent = $refund->payment_intent ?? null;
+
+        if (is_object($paymentIntent)) {
+            $paymentIntent = $paymentIntent->id ?? null;
+        }
+
+        if (
+            !is_string($refundId) ||
+            !is_string($paymentIntent) ||
+            !is_numeric($refund->amount ?? null)
+        ) {
+            throw new \RuntimeException('Invalid Stripe refund data.');
+        }
+
+        $payment = Payment::query()
+            ->where('provider', 'stripe')
+            ->where('provider_payment_id', $paymentIntent)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$payment) {
+            throw new \RuntimeException(
+                'No local payment matches this Stripe refund.'
+            );
+        }
+
+        $refundStatus = match ((string) ($refund->status ?? 'pending')) {
+            'succeeded' => 'succeeded',
+            'failed' => 'failed',
+            'canceled' => 'canceled',
+            default => 'pending',
+        };
+
+        $existing = DB::table('refunds')
+            ->where('provider_refund_id', $refundId)
+            ->first();
+
+        if (!$existing) {
+            $existing = DB::table('refunds')
+                ->where('payment_id', $payment->id)
+                ->whereNull('provider_refund_id')
+                ->where('amount_cents', (int) $refund->amount)
+                ->where('status', 'pending')
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        $createdTimestamp = is_numeric($refund->created ?? null)
+            ? (int) $refund->created
+            : time();
+
+        $values = [
+            'provider_refund_id' => $refundId,
+            'status' => $refundStatus,
+            'reason' => $refund->reason ?? ($existing->reason ?? null),
+            'requested_at' => $existing->requested_at
+                ?? Carbon::createFromTimestamp(
+                    $createdTimestamp
+                )->toDateTimeString(),
+            'completed_at' => in_array(
+                $refundStatus,
+                ['succeeded', 'failed', 'canceled'],
+                true
+            ) ? now() : null,
+            'updated_at' => now(),
+        ];
+
+        if ($existing) {
+            DB::table('refunds')
+                ->where('id', $existing->id)
+                ->update($values);
+        } else {
+            DB::table('refunds')->insert(array_merge($values, [
+                'payment_id' => $payment->id,
+                'amount_cents' => (int) $refund->amount,
+                'created_at' => now(),
+            ]));
+        }
+
+        $successfulRefundTotal = (int) DB::table('refunds')
+            ->where('payment_id', $payment->id)
+            ->where('status', 'succeeded')
+            ->sum('amount_cents');
+
+        if ($successfulRefundTotal >= (int) $payment->amount_cents) {
+            $payment->update([
+                'status' => 'refunded',
+            ]);
+
+            Booking::query()
+                ->whereKey($payment->booking_id)
+                ->where('status', 'confirmed')
+                ->update([
+                    'status' => 'refunded',
+                    'updated_at' => now(),
+                ]);
+        }
     }
 }

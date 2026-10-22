@@ -11,15 +11,15 @@ class StripeTestSeeder extends Seeder
 {
     public function run(): void
     {
-        $user = User::query()->first();
+        $user = User::query()->where('id', 1)->first();
 
         if (! $user) {
             throw new RuntimeException(
-                'Users table mein user nahi hai. Pehle register karein.'
+                'User ID 1 nahi mila. Pehle apne user ki ID check karein.'
             );
         }
 
-        // 1. Create test movie
+        // Create or update the test movie.
         DB::table('movies')->updateOrInsert(
             ['slug' => 'stripe-test-movie'],
             [
@@ -37,7 +37,7 @@ class StripeTestSeeder extends Seeder
             ->where('slug', 'stripe-test-movie')
             ->value('id');
 
-        // 2. Create test screen
+        // Create or update the test screen.
         DB::table('screens')->updateOrInsert(
             ['name' => 'Stripe Test Screen'],
             [
@@ -52,7 +52,7 @@ class StripeTestSeeder extends Seeder
             ->where('name', 'Stripe Test Screen')
             ->value('id');
 
-        // 3. Create test showtime
+        // Create or reuse the test showtime.
         $startsAt = '2027-01-15 19:00:00';
 
         DB::table('showtimes')->updateOrInsert(
@@ -76,24 +76,25 @@ class StripeTestSeeder extends Seeder
             ->where('starts_at', $startsAt)
             ->value('id');
 
-        // 4. Create test hold
-        $holdId = DB::table('holds')->insertGetId([
-            'user_id' => $user->id,
-            'showtime_id' => $showtimeId,
-            'status' => 'active',
-            'expires_at' => now()->addHours(2),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // Create four uniquely identified test bookings.
+        for ($i = 1; $i <= 4; $i++) {
+            $reference = sprintf(
+                'STRIPE-BATCH-%s-%02d',
+                now()->format('YmdHis'),
+                $i
+            );
 
-        // 5. Create test booking only once
-        $booking = DB::table('bookings')
-            ->where('booking_reference', 'STRIPE-TEST-0001')
-            ->first();
+            $holdId = DB::table('holds')->insertGetId([
+                'user_id' => $user->id,
+                'showtime_id' => $showtimeId,
+                'status' => 'active',
+                'expires_at' => now()->addHours(2),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        if (! $booking) {
             $bookingId = DB::table('bookings')->insertGetId([
-                'booking_reference' => 'STRIPE-TEST-0001',
+                'booking_reference' => $reference,
                 'user_id' => $user->id,
                 'showtime_id' => $showtimeId,
                 'hold_id' => $holdId,
@@ -103,14 +104,27 @@ class StripeTestSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        } else {
-            $bookingId = $booking->id;
+
+            DB::table('payments')->insert([
+                'booking_id' => $bookingId,
+                'provider' => 'stripe',
+                'provider_session_id' => null,
+                'provider_payment_id' => null,
+                'amount_cents' => 1000,
+                'currency' => 'USD',
+                'status' => 'pending',
+                'paid_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->command->info(
+                "Created booking ID {$bookingId}: {$reference}"
+            );
         }
 
-        $this->command->info('Stripe test data created.');
-        $this->command->info("User ID: {$user->id}");
-        $this->command->info("Booking ID: {$bookingId}");
-        $this->command->info('Booking Reference: STRIPE-TEST-0001');
-        $this->command->info('Amount: $10.00 USD');
+        $this->command->info('Four Stripe test bookings created.');
+        $this->command->info('Each booking amount: $10.00 USD');
+        $this->command->info('Existing bookings and payments were not updated.');
     }
 }
