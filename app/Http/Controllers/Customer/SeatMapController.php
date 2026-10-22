@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Hold;
 use App\Models\Showtime;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +17,7 @@ class SeatMapController extends Controller
         $cutoff = Showtime::setting('sales_cutoff_minutes', 15);
         $screen = $showtime->screen;
 
-        // TODO: use the Movie model once the owner's branch is merged
+        // TODO (merge): use the Movie model and $movie->genres once the owner's branch is merged
         $movie = DB::table('movies')->where('id', $showtime->movie_id)->first();
         $genres = DB::table('genres')
             ->join('genre_movie', 'genres.id', '=', 'genre_movie.genre_id')
@@ -66,6 +67,16 @@ class SeatMapController extends Controller
 
         $available = $rows->flatten(1)->where('state', 'available')->count();
 
+        // The customer's own running hold for this showtime, if any (drives the banner and the timer).
+        $myHold = auth()->check()
+            ? Hold::query()
+                ->where('user_id', auth()->id())
+                ->where('showtime_id', $showtime->id)
+                ->where('status', 'active')
+                ->where('expires_at', '>', $now)
+                ->first()
+            : null;
+
         if (auth()->guest()) {
             session(['url.intended' => url()->current()]); // bring the guest back here after sign in
         }
@@ -79,6 +90,7 @@ class SeatMapController extends Controller
             'sameDay' => $sameDay,
             'rows' => $rows,
             'available' => $available,
+            'myHold' => $myHold,
             'max' => Showtime::setting('max_seats_per_booking', 6),
             'holdMinutes' => Showtime::setting('hold_minutes', 10),
             'cutoff' => $cutoff,
