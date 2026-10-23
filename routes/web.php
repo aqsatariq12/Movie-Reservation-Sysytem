@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ScreenController;
 use App\Http\Controllers\Admin\ShowtimeController;
 use App\Http\Controllers\Admin\MovieController as AdminMovieController;
 use App\Http\Controllers\Admin\GenreController;
+use App\Http\Controllers\Admin\CustomerController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -65,6 +66,10 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::resource('movies', AdminMovieController::class)
             ->except(['show', 'destroy']);
 
+        // Customer directory (records are retained: no create/edit/delete)
+        Route::resource('customers', CustomerController::class)
+            ->only(['index', 'show']);
+
         Route::patch('/movies/{movie}/archive', [AdminMovieController::class, 'archive'])
             ->name('movies.archive');
         // Genre management (create/edit/delete states live on the index page)
@@ -77,5 +82,10 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Showtime management
         Route::resource('showtimes', ShowtimeController::class)
             ->except(['show', 'destroy']);
+
+        Route::get('/showtimes/{showtime}/cancel', [ShowtimeController::class, 'confirmCancel'])
+            ->name('showtimes.cancel');
+        Route::post('/showtimes/{showtime}/cancel', [ShowtimeController::class, 'cancel'])
+            ->name('showtimes.cancel.store');
     });
 require __DIR__ . '/settings.php';

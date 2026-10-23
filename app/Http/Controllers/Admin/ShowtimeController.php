@@ -13,7 +13,8 @@ use App\Models\Screen;
 use App\Models\Showtime;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-
+use App\Actions\Showtimes\CancelShowtimeAction;
+use App\Http\Requests\Admin\CancelShowtimeRequest;
 class ShowtimeController extends Controller
 {
     public function index(ShowtimeIndexRequest $request)
@@ -129,6 +130,34 @@ class ShowtimeController extends Controller
         return redirect()->route('admin.showtimes.index')
             ->with('status', 'Showtime updated.');
     }
+
+        public function confirmCancel(Showtime $showtime, CancelShowtimeAction $cancel)
+    {
+        if (! $this->isEditable($showtime)) {
+            return $this->readOnlyRedirect($showtime);
+        }
+
+        $showtime->load(['movie', 'screen']);
+
+        return view('admin.showtimes.cancel', [
+            'showtime' => $showtime,
+            'impact' => $cancel->impact($showtime),
+        ]);
+    }
+
+    public function cancel(CancelShowtimeRequest $request, Showtime $showtime, CancelShowtimeAction $cancel)
+    {
+        if (! $this->isEditable($showtime)) {
+            return $this->readOnlyRedirect($showtime);
+        }
+
+        $cancel->execute($showtime, $request->user(), $request->validated('reason'), $request->ip());
+
+        return redirect()
+            ->route('admin.showtimes.index', ['tab' => 'cancelled'])
+            ->with('status', 'Showtime cancelled. Tickets voided and seats released.');
+    }
+    
 
     /** Only a scheduled show that has not started yet can be edited. */
     private function isEditable(Showtime $showtime): bool

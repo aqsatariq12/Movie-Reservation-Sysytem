@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Enums\RefundStatus;
 
 class Booking extends Model
 {
@@ -67,5 +68,45 @@ class Booking extends Model
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class);
+    }
+
+    /**
+     * Admin-facing state, derived from booking + payment + refund status.
+     * Eager load "payments.refunds" before calling this (avoids N+1).
+     *
+     * @return array{label: string, tone: string}
+     */
+    /**
+     * Admin-facing state label + tone for the booking history table.
+     * Eager load "payments.refunds" before calling this (avoids N+1).
+     *
+     * @return array{label: string, tone: string}
+     */
+    public function adminState(): array
+    {
+        return match ($this->status) {
+            BookingStatus::Confirmed => ['label' => 'Confirmed', 'tone' => 'info'],
+            BookingStatus::PendingPayment => ['label' => 'Pending payment', 'tone' => 'warning'],
+            BookingStatus::Refunded => ['label' => 'Refunded', 'tone' => 'success'],
+            BookingStatus::Expired => ['label' => 'Expired', 'tone' => 'muted'],
+            BookingStatus::Failed => ['label' => 'Failed', 'tone' => 'danger'],
+            BookingStatus::Cancelled => $this->cancelledState(),
+        };
+    }
+
+    /** A cancelled booking is "refund pending" until the refund succeeds. */
+    private function cancelledState(): array
+    {
+        $refunds = $this->payments->flatMap(fn($payment) => $payment->refunds);
+
+        if ($refunds->contains(fn($refund) => $refund->status === RefundStatus::Pending)) {
+            return ['label' => 'Cancelled · refund pending', 'tone' => 'muted'];
+        }
+
+        if ($refunds->contains(fn($refund) => $refund->status === RefundStatus::Succeeded)) {
+            return ['label' => 'Refunded', 'tone' => 'success'];
+        }
+
+        return ['label' => 'Cancelled', 'tone' => 'muted'];
     }
 }

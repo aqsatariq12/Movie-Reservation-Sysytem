@@ -44,7 +44,7 @@ class HoldSeatsAction
         return DB::transaction(function () use ($user, $showtime, $seatIds, $holdMinutes, $cutoffMinutes) {
             $now = now();
 
-            $show = Showtime::query()->findOrFail($showtime->id);
+            $show = Showtime::query()->lockForUpdate()->findOrFail($showtime->id);
 
             if ($show->status !== ShowtimeStatus::Scheduled) {
                 $this->fail('This showtime is not on sale.');
