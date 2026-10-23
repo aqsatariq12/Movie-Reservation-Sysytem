@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ShowtimeController;
 use App\Http\Controllers\Admin\MovieController as AdminMovieController;
 use App\Http\Controllers\Admin\GenreController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\StaffController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -87,5 +88,9 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('showtimes.cancel');
         Route::post('/showtimes/{showtime}/cancel', [ShowtimeController::class, 'cancel'])
             ->name('showtimes.cancel.store');
+
+        // Staff & admin role management
+        Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+        Route::patch('/staff/{user}/role', [StaffController::class, 'updateRole'])->name('staff.role.update');
     });
 require __DIR__ . '/settings.php';
