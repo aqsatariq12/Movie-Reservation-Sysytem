@@ -4,6 +4,7 @@ namespace App\Actions\Staff;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Models\AuditLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -36,8 +37,15 @@ class ChangeUserRoleAction
             // "role" is not mass assignable on purpose, so forceFill is the trusted path.
             $target->forceFill(['role' => $newRole])->save();
 
-            // TODO(audit): record actor, target, before ($oldRole) / after ($newRole) and $ip.
-            // Paste your audit log model + migration and I'll fill in this one call.
+            AuditLog::create([
+                'user_id' => $actor->id,
+                'action' => 'user.role_changed',
+                'entity_type' => 'user',
+                'entity_id' => $target->id,
+                'before_data' => ['role' => $oldRole->value],
+                'after_data' => ['role' => $newRole->value],
+                'ip_address' => $ip,
+            ]);
         });
     }
 

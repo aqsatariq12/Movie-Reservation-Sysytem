@@ -87,10 +87,7 @@ class Showtime extends Model
 
     public static function setting(string $key, int $default): int
     {
-        return (int) (
-            DB::table('settings')->where('key', $key)->value('value')
-            ?? $default
-        );
+        return Setting::readInt($key, $default);
     }
 
     public static function premiumSurchargeCents(): int

@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\MovieController as AdminMovieController;
 use App\Http\Controllers\Admin\GenreController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\SettingsController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -92,5 +93,9 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Staff & admin role management
         Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
         Route::patch('/staff/{user}/role', [StaffController::class, 'updateRole'])->name('staff.role.update');
+
+        // Reservation settings
+        Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
+        Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     });
 require __DIR__ . '/settings.php';

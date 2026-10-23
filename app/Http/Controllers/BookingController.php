@@ -159,7 +159,8 @@ class BookingController extends Controller
 
         // ---- Cancellation ------------------------------------------------
         // Display only. The real cancel/refund rule is enforced by the cancel Action (Member B).
-        $windowHours = (int) (DB::table('settings')->where('key', 'cancellation_window_hours')->value('value') ?: 2);
+        $windowHours = \App\Models\Setting::readInt('cancellation_window_hours', 2);
+
         $deadline = $showtime->starts_at->copy()->subHours($windowHours);
         $anyScanned = $tickets->contains(fn($t) => $val($t->status) === 'used');
 
@@ -244,7 +245,8 @@ class BookingController extends Controller
         $booking->load(['showtime.movie', 'showtime.screen', 'bookingSeats.seat', 'tickets']);
 
         $showtime = $booking->showtime;
-        $windowHours = (int) (DB::table('settings')->where('key', 'cancellation_window_hours')->value('value') ?: 2);
+        $windowHours = \App\Models\Setting::readInt('cancellation_window_hours', 2);
+        
         $deadline = $showtime->starts_at->copy()->subHours($windowHours);
         $anyScanned = $booking->tickets->contains(fn($t) => $this->val($t->status) === 'used');
 

@@ -79,9 +79,11 @@
                                 Booking open
                             </p>
                         @else
-                            <p class="mt-2 text-sm text-red-600">
+                            <!-- <p class="mt-2 text-sm text-red-600">
                                 Booking closed — sales close 15 minutes before the show
-                            </p>
+                            </p> -->
+
+                            <p class="text-[#a0aec5]">Sales close · {{ $salesCutoff }} minutes before start</p>
                         @endif
                     </div>
 
