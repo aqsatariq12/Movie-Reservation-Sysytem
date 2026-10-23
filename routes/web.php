@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\GenreController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\FailedJobController;
+
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -97,5 +99,11 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Reservation settings
         Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+
+        // Failed background jobs
+        Route::get('/failed-jobs', [FailedJobController::class, 'index'])->name('failed-jobs.index');
+        Route::get('/failed-jobs/{uuid}', [FailedJobController::class, 'show'])->whereUuid('uuid')->name('failed-jobs.show');
+        Route::post('/failed-jobs/{uuid}/retry', [FailedJobController::class, 'retry'])->whereUuid('uuid')->name('failed-jobs.retry');
+        Route::delete('/failed-jobs/{uuid}', [FailedJobController::class, 'destroy'])->whereUuid('uuid')->name('failed-jobs.destroy');
     });
 require __DIR__ . '/settings.php';
