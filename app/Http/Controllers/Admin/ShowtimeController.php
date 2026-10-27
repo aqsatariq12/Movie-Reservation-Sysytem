@@ -86,6 +86,8 @@ class ShowtimeController extends Controller
             $request->integer('screen_id'),
             $request->startsAt(),
             $request->basePriceCents(),
+            $request->user(),
+            $request->ip(),
         );
 
         return redirect()->route('admin.showtimes.index')
@@ -94,7 +96,7 @@ class ShowtimeController extends Controller
 
     public function edit(Showtime $showtime)
     {
-        if (! $this->isEditable($showtime)) {
+        if (!$this->isEditable($showtime)) {
             return $this->readOnlyRedirect($showtime);
         }
 
@@ -115,7 +117,7 @@ class ShowtimeController extends Controller
     public function update(UpdateShowtimeRequest $request, Showtime $showtime, UpdateShowtimeAction $update)
     {
         // Same guard as edit(): a typed URL must not bypass the read-only rule.
-        if (! $this->isEditable($showtime)) {
+        if (!$this->isEditable($showtime)) {
             return $this->readOnlyRedirect($showtime);
         }
 
@@ -125,15 +127,17 @@ class ShowtimeController extends Controller
             $request->integer('screen_id') ?: null,
             $request->filled('show_date') ? $request->startsAt() : null,
             $request->basePriceCents(),
+            $request->user(),
+            $request->ip(),
         );
 
         return redirect()->route('admin.showtimes.index')
             ->with('status', 'Showtime updated.');
     }
 
-        public function confirmCancel(Showtime $showtime, CancelShowtimeAction $cancel)
+    public function confirmCancel(Showtime $showtime, CancelShowtimeAction $cancel)
     {
-        if (! $this->isEditable($showtime)) {
+        if (!$this->isEditable($showtime)) {
             return $this->readOnlyRedirect($showtime);
         }
 
@@ -147,7 +151,7 @@ class ShowtimeController extends Controller
 
     public function cancel(CancelShowtimeRequest $request, Showtime $showtime, CancelShowtimeAction $cancel)
     {
-        if (! $this->isEditable($showtime)) {
+        if (!$this->isEditable($showtime)) {
             return $this->readOnlyRedirect($showtime);
         }
 
@@ -157,7 +161,7 @@ class ShowtimeController extends Controller
             ->route('admin.showtimes.index', ['tab' => 'cancelled'])
             ->with('status', 'Showtime cancelled. Tickets voided and seats released.');
     }
-    
+
 
     /** Only a scheduled show that has not started yet can be edited. */
     private function isEditable(Showtime $showtime): bool

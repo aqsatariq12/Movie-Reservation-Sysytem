@@ -14,7 +14,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\FailedJobController;
-
+use App\Http\Controllers\Admin\AuditLogController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -105,5 +105,11 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/failed-jobs/{uuid}', [FailedJobController::class, 'show'])->whereUuid('uuid')->name('failed-jobs.show');
         Route::post('/failed-jobs/{uuid}/retry', [FailedJobController::class, 'retry'])->whereUuid('uuid')->name('failed-jobs.retry');
         Route::delete('/failed-jobs/{uuid}', [FailedJobController::class, 'destroy'])->whereUuid('uuid')->name('failed-jobs.destroy');
+
+
+        // Audit log
+        // Audit log (read-only)
+        Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit.index');
     });
+// TEMP: preview error pages. Remove when done.
 require __DIR__ . '/settings.php';

@@ -2,14 +2,18 @@
 
 namespace App\Actions\Showtimes;
 
+use App\Enums\ShowtimeStatus;
+use App\Models\AuditLog;
 use App\Models\Screen;
 use App\Models\Seat;
 use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
+use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use App\Enums\ShowtimeStatus;
+
 class UpdateShowtimeAction
 {
     public function __construct(
@@ -18,11 +22,18 @@ class UpdateShowtimeAction
     ) {
     }
 
-    public function execute(Showtime $showtime, ?int $movieId, ?int $screenId, ?CarbonInterface $startsAt, int $basePriceCents): Showtime
-    {
+    public function execute(
+        Showtime $showtime,
+        ?int $movieId,
+        ?int $screenId,
+        ?CarbonInterface $startsAt,
+        int $basePriceCents,
+        ?User $actor = null,
+        ?string $ip = null,
+    ): Showtime {
         $surcharge = Showtime::premiumSurchargeCents();
 
-        return DB::transaction(function () use ($showtime, $movieId, $screenId, $startsAt, $basePriceCents, $surcharge) {
+        return DB::transaction(function () use ($showtime, $movieId, $screenId, $startsAt, $basePriceCents, $surcharge, $actor, $ip) {
             $show = Showtime::query()->lockForUpdate()->findOrFail($showtime->id);
 
             if ($show->status !== ShowtimeStatus::Scheduled || $show->starts_at->isPast()) {
@@ -31,12 +42,15 @@ class UpdateShowtimeAction
                 ]);
             }
 
+            // Remember how it looked before any change, for the audit entry.
+            $before = $this->snapshot($show);
+
             // Lock the seat rows too: a hold being made right now is either seen here or waits for us.
             $now = now();
             $seatRows = ShowtimeSeat::query()->where('showtime_id', $show->id)->orderBy('id')->lockForUpdate()->get();
 
             $locked = $show->hasActiveBookings() || $seatRows->contains(
-                fn($row) => $row->status === 'sold'
+                fn ($row) => $row->status === 'sold'
                     || ($row->status === 'held' && $row->held_until && $row->held_until->gt($now))
             );
 
@@ -44,6 +58,7 @@ class UpdateShowtimeAction
             if ($locked || $movieId === null || $screenId === null || $startsAt === null) {
                 $show->update(['base_price_cents' => $basePriceCents]);
                 $this->reprice($show, $basePriceCents, $surcharge);
+                $this->audit($show, $before, $actor, $ip);
 
                 return $show;
             }
@@ -72,8 +87,46 @@ class UpdateShowtimeAction
                 $this->reprice($show, $basePriceCents, $surcharge);
             }
 
+            $this->audit($show, $before, $actor, $ip);
+
             return $show;
         });
+    }
+
+    /** The fields an admin can change on a showtime. */
+    private function snapshot(Showtime $show): array
+    {
+        return [
+            'movie_id' => $show->movie_id,
+            'screen_id' => $show->screen_id,
+            'starts_at' => $show->starts_at->format('Y-m-d H:i:s'),
+            'base_price_cents' => $show->base_price_cents,
+        ];
+    }
+
+    /** Writes one audit entry holding only the fields that changed. */
+    private function audit(Showtime $show, array $before, ?User $actor, ?string $ip): void
+    {
+        if (! $actor) {
+            return;
+        }
+
+        $after = $this->snapshot($show);
+        $changed = array_keys(array_diff_assoc($after, $before));
+
+        if ($changed === []) {
+            return; // saved without changing anything
+        }
+
+        AuditLog::create([
+            'user_id' => $actor->id,
+            'action' => 'showtime.updated',
+            'entity_type' => 'showtime',
+            'entity_id' => $show->id,
+            'before_data' => Arr::only($before, $changed),
+            'after_data' => Arr::only($after, $changed),
+            'ip_address' => $ip,
+        ]);
     }
 
     /** Only seats that are still available get the new price. Held and sold seats keep theirs. */
@@ -84,7 +137,7 @@ class UpdateShowtimeAction
             ->where('type', 'premium')
             ->pluck('id');
 
-        $available = fn() => ShowtimeSeat::query()
+        $available = fn () => ShowtimeSeat::query()
             ->where('showtime_id', $show->id)
             ->where('status', 'available');
 
