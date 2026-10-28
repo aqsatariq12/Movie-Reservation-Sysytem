@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\FailedJobController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ReportController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -110,6 +111,10 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Audit log
         // Audit log (read-only)
         Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit.index');
+
+        // Sales reports
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
     });
 // TEMP: preview error pages. Remove when done.
 require __DIR__ . '/settings.php';
