@@ -148,12 +148,12 @@
                         </p>
                         <p>
                             Payment status:
-                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus)) }}</span>
+                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus instanceof \App\Enums\PaymentStatus ? $paymentStatus->value : $paymentStatus)) }}</span>
                         </p>
                     </div>
 
                     <a
-                        href="{{ route('dashboard') }}"
+                        href="{{ route('bookings.index') }}"
                         class="inline-block rounded-lg border border-[#263653] bg-[#111b30] px-5 py-3 text-sm font-medium text-white hover:bg-[#16223c]"
                     >
                         View my bookings
@@ -190,12 +190,12 @@
                         </p>
                         <p>
                             Payment:
-                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus)) }}</span>
+                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus instanceof \App\Enums\PaymentStatus ? $paymentStatus->value : $paymentStatus)) }}</span>
                         </p>
                     </div>
 
                     <a
-                        href="{{ route('dashboard') }}"
+                        href="{{ route('bookings.index') }}"
                         class="inline-block rounded-lg border border-[#263653] bg-[#111b30] px-5 py-3 text-sm font-medium text-white hover:bg-[#16223c]"
                     >
                         View my bookings
@@ -232,12 +232,12 @@
                         </p>
                         <p>
                             Payment:
-                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus)) }}</span>
+                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus instanceof \App\Enums\PaymentStatus ? $paymentStatus->value : $paymentStatus)) }}</span>
                         </p>
                     </div>
 
                     <a
-                        href="{{ route('dashboard') }}"
+                        href="{{ route('bookings.index') }}"
                         class="inline-block rounded-lg bg-[#2f6bff] px-5 py-3 text-sm font-medium text-white hover:bg-[#2459d6]"
                     >
                         View my bookings
@@ -271,7 +271,7 @@
 
                         <p>
                             Booking status:
-                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $bookingStatus)) }}</span>
+                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $bookingStatus instanceof \App\Enums\BookingStatus ? $bookingStatus->value : $bookingStatus)) }}</span>
                         </p>
 
                         @if ($hold?->expires_at)
@@ -292,7 +292,7 @@
                     </div>
 
                     <a
-                        href="{{ route('home') }}"
+                        href="{{ route('showtimes.seats', $booking->showtime_id) }}"
                         class="inline-block rounded-lg bg-[#2f6bff] px-5 py-3 text-sm font-medium text-white hover:bg-[#2459d6]"
                     >
                         Find available seats
@@ -410,11 +410,11 @@
                         </p>
                         <p>
                             Booking status:
-                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $bookingStatus)) }}</span>
+                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $bookingStatus instanceof \App\Enums\BookingStatus ? $bookingStatus->value : $bookingStatus)) }}</span>
                         </p>
                         <p>
                             Payment status:
-                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus)) }}</span>
+                            <span class="text-white">{{ ucfirst(str_replace('_', ' ', $paymentStatus instanceof \App\Enums\PaymentStatus ? $paymentStatus->value : $paymentStatus)) }}</span>
                         </p>
                         <p>
                             Amount:
@@ -423,7 +423,7 @@
                     </div>
 
                     <a
-                        href="{{ route('dashboard') }}"
+                        href="{{ route('bookings.index') }}"
                         class="inline-block rounded-lg bg-[#2f6bff] px-5 py-3 text-sm font-medium text-white hover:bg-[#2459d6]"
                     >
                         View my bookings
@@ -448,14 +448,14 @@
                     <div class="flex flex-wrap justify-between gap-3 border-b border-[#1f2a44] pb-4">
                         <span>Booking status</span>
                         <span class="text-white">
-                            {{ ucfirst(str_replace('_', ' ', $bookingStatus)) }}
+                            {{ ucfirst(str_replace('_', ' ', $bookingStatus instanceof \App\Enums\BookingStatus ? $bookingStatus->value : $bookingStatus)) }}
                         </span>
                     </div>
 
                     <div class="flex flex-wrap justify-between gap-3 border-b border-[#1f2a44] pb-4">
                         <span>Payment status</span>
                         <span class="text-white">
-                            {{ ucfirst(str_replace('_', ' ', $paymentStatus)) }}
+                            {{ ucfirst(str_replace('_', ' ', $paymentStatus instanceof \App\Enums\PaymentStatus ? $paymentStatus->value : $paymentStatus)) }}
                         </span>
                     </div>
 
@@ -479,7 +479,7 @@
                         <div class="flex flex-wrap justify-between gap-3 border-b border-[#1f2a44] pb-4">
                             <span>Hold status</span>
                             <span class="text-white">
-                                {{ ucfirst($hold->status) }}
+                                {{ ucfirst(str_replace('_', ' ', $hold->status instanceof \app\enums\holdstatus ? $hold->status->value : $hold->status)) }}
                             </span>
                         </div>
                     @endif
@@ -495,7 +495,7 @@
                 </div>
 
                 <a
-                    href="{{ route('dashboard') }}"
+                    href="{{ route('bookings.index') }}"
                     class="mt-8 inline-block rounded-lg border border-[#1f2a44] bg-[#111b30] px-5 py-3 text-sm font-medium text-white hover:bg-[#16223c]"
                 >
                     My bookings
@@ -544,3 +544,4 @@
         });
     </script>
 </x-layouts::site>
+

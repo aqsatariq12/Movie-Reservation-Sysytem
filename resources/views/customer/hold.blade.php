@@ -217,8 +217,8 @@
                     <div class="my-5 border-t border-slate-100"></div>
 
                     {{-- Stripe checkout --}}
-                    @if (Route::has('bookings.checkout'))
-                        <form method="POST" action="{{ route('bookings.checkout', $booking) }}">
+                    @if (Route::has('payment.checkout'))
+                        <form method="POST" action="{{  route('payment.checkout', $booking)}}">
                             @csrf
                             <button
                                 id="continue-button"

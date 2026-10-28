@@ -33,10 +33,17 @@ class StripePaymentService
                  'quantity' => 1,
             ],
         ],
-        'metadata' =>[
-         'booking_id' => (string) $booking->id,
-         'booking_reference' => $booking->booking_reference,
-        ],
+       'metadata' => [
+    'booking_id' => (string) $booking->id,
+    'booking_reference' => $booking->booking_reference,
+],
+
+'payment_intent_data' => [
+    'metadata' => [
+        'booking_id' => (string) $booking->id,
+        'booking_reference' => $booking->booking_reference,
+    ],
+],
 
         'success_url' => route('payment.success')
          . '?session_id={CHECKOUT_SESSION_ID}',

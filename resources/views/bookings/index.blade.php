@@ -56,7 +56,7 @@
         $status = $booking->status instanceof \BackedEnum ? $booking->status->value : (string) $booking->status;
 
         if ($status === 'confirmed') {
-            return ['Tickets →', route('bookings.show', $booking) . '#tickets'];
+            return ['Tickets →', route('booking.tickets', $booking)];
         }
         if ($status === 'pending_payment') {
             return [
@@ -114,7 +114,7 @@
                         <div
                             class="h-[200px] w-[150px] shrink-0 overflow-hidden rounded-[10px] bg-gradient-to-br from-[#1f2937] to-[#347bff]">
                             @if ($movie->poster_path)
-                                <img src="{{ asset('/' . $movie->poster_path) }}" alt="{{ $movie->title }} poster"
+                                <img src="{{ asset('storage/' . $movie->poster_path) }}" alt="{{ $movie->title }} poster"
                                     class="h-full w-full object-cover">
                             @endif
                         </div>
@@ -138,7 +138,7 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-4">
-                                <a href="{{ route('bookings.show', $featured) . '#tickets' }}"
+                                <a href="{{ route('booking.tickets', $featured) }}"
                                     class="rounded-xl border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:bg-[#2a68dc]">
                                     View tickets →
                                 </a>

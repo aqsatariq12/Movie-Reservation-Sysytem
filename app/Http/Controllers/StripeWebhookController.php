@@ -63,6 +63,9 @@ class StripeWebhookController extends Controller
                     'checkout.session.async_payment_failed',
                     'checkout.session.expired',
                 ];
+                $paymentIntentEvents = [
+    'payment_intent.payment_failed',
+];
 
                 $bookingId = null;
 
@@ -134,6 +137,9 @@ class StripeWebhookController extends Controller
                         case 'checkout.session.async_payment_failed':
                             $this->processCheckoutSession($object, 'failed');
                             break;
+                            case 'payment_intent.payment_failed':
+    $this->processFailedPaymentIntent($object);
+    break;
 
                         case 'checkout.session.expired':
                             $this->processCheckoutSession($object, 'expired');
@@ -274,7 +280,7 @@ class StripeWebhookController extends Controller
 
 if (
     $payment->status === \App\Enums\PaymentStatus::Paid &&
-    !($targetStatus === 'paid' &&  $booking->status === \App\Enums\BookingStatus::Cancelled)
+    $targetStatus !== 'paid'
 ) {
     return;
 }
@@ -343,14 +349,14 @@ if ($existingRefund) {
         return;
     }
 
-    if (!in_array($booking->status, [
-        'pending_payment',
-        'confirmed',
-    ], true)) {
-        throw new \RuntimeException(
-            'Booking is not in a payable state.'
-        );
-    }
+  if (!in_array($booking->status, [
+    \App\Enums\BookingStatus::PendingPayment,
+    \App\Enums\BookingStatus::Confirmed,
+], true)) {
+    throw new \RuntimeException(
+        'Booking is not in a payable state.'
+    );
+}
 
     if ($booking->status === \App\Enums\BookingStatus::PendingPayment) {
         $booking->update([
@@ -399,7 +405,106 @@ if ($existingRefund) {
     }
 }
     }
+private function processFailedPaymentIntent(object $intent): void
+{
+    $intentId = $intent->id ?? null;
+    $bookingId = $intent->metadata->booking_id ?? null;
+    $bookingReference = $intent->metadata->booking_reference ?? null;
 
+    if (
+        !is_string($intentId) ||
+        !is_string($bookingId) ||
+        !ctype_digit($bookingId) ||
+        !is_string($bookingReference) ||
+        trim($bookingReference) === ''
+    ) {
+        throw new \RuntimeException(
+            'Invalid failed PaymentIntent metadata.'
+        );
+    }
+
+    $booking = Booking::query()
+        ->whereKey((int) $bookingId)
+        ->lockForUpdate()
+        ->first();
+
+    if (
+        !$booking ||
+        (string) $booking->booking_reference !== $bookingReference
+    ) {
+        throw new \RuntimeException(
+            'Failed PaymentIntent booking does not match.'
+        );
+    }
+
+    $payment = Payment::query()
+        ->where('booking_id', $booking->id)
+        ->where('provider', 'stripe')
+        ->lockForUpdate()
+        ->first();
+
+    if (!$payment) {
+        throw new \RuntimeException(
+            'No local payment matches this failed PaymentIntent.'
+        );
+    }
+
+    if (
+        (int) ($intent->amount ?? -1) !== (int) $payment->amount_cents ||
+        strtolower((string) ($intent->currency ?? '')) !==
+            strtolower((string) $payment->currency)
+    ) {
+        throw new \RuntimeException(
+            'Failed PaymentIntent amount or currency does not match.'
+        );
+    }
+
+    if (in_array($payment->status, [
+        \App\Enums\PaymentStatus::Paid,
+        \App\Enums\PaymentStatus::Refunded,
+    ], true)) {
+        return;
+    }
+
+    if ($payment->status !== \App\Enums\PaymentStatus::Pending) {
+        return;
+    }
+
+    $payment->update([
+        'provider_payment_id' => $intentId,
+        'status' => 'failed',
+    ]);
+
+    if (
+        $booking->status === \App\Enums\BookingStatus::PendingPayment
+    ) {
+        $booking->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+        ]);
+
+        if ($booking->hold_id) {
+            DB::table('holds')
+                ->where('id', $booking->hold_id)
+                ->where('status', 'active')
+                ->update([
+                    'status' => 'expired',
+                    'updated_at' => now(),
+                ]);
+
+            DB::table('showtime_seats')
+                ->where('hold_id', $booking->hold_id)
+                ->where('status', 'held')
+                ->update([
+                    'status' => 'available',
+                    'hold_id' => null,
+                    'booking_id' => null,
+                    'held_until' => null,
+                    'updated_at' => now(),
+                ]);
+        }
+    }
+}
     private function processRefund(object $refund): void
     {
         $refundId = $refund->id ?? null;

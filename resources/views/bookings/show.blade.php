@@ -43,7 +43,7 @@
                 </p>
 
                 @if ($status === 'confirmed')
-                    <a href="#tickets"
+                    <a href="{{ route('booking.tickets', $booking) }}"
                         class="rounded-xl border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:bg-[#2a68dc] print:hidden">
                         View tickets →
                     </a>

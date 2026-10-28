@@ -11,7 +11,9 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\Admin\MovieController as AdminMovieController;
+use App\Http\Controllers\Admin\TicketScannerController;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -92,6 +94,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/bookings/{booking}/release-hold', [StripePaymentController::class, 'releaseHold'])
         ->name('booking.release-hold');
+    
+        // Customer tickets
+    Route::get('/bookings/{booking}/tickets', [TicketController::class, 'show'])
+        ->name('booking.tickets');
 
     Route::get('/booking/success', function () {
         return view('bookings.success');
@@ -134,6 +140,11 @@ Route::middleware(['auth', 'verified', 'admin'])
 
         Route::resource('showtimes', ShowtimeController::class)
             ->except(['show', 'destroy']);
+            Route::get('/ticket-scanner', [TicketScannerController::class, 'index'])
+    ->name('ticket-scanner');
+
+Route::post('/ticket-scanner/scan', [TicketScannerController::class, 'scan'])
+    ->name('ticket-scanner.scan');
     });
 
 require __DIR__ . '/settings.php';
