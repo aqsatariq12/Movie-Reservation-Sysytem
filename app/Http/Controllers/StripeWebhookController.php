@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Mail\BookingConfirmedMail;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -358,12 +360,34 @@ if ($existingRefund) {
     );
 }
 
-    if ($booking->status === \App\Enums\BookingStatus::PendingPayment) {
-        $booking->update([
-            'status' => 'confirmed',
-            'confirmed_at' => now(),
-        ]);
-    }
+   if ($booking->status === \App\Enums\BookingStatus::PendingPayment) {
+    $booking->update([
+        'status' => 'confirmed',
+        'confirmed_at' => now(),
+    ]);
+
+    $bookingIdForEmail = $booking->id;
+
+    DB::afterCommit(function () use ($bookingIdForEmail) {
+        try {
+            $confirmedBooking = Booking::with([
+                'user',
+                'showtime.movie',
+                'bookingSeats.seat',
+            ])->find($bookingIdForEmail);
+
+            if ($confirmedBooking && $confirmedBooking->user?->email) {
+                Mail::to($confirmedBooking->user->email)
+                    ->send(new BookingConfirmedMail($confirmedBooking));
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Booking confirmation email failed.', [
+                'booking_id' => $bookingIdForEmail,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    });
+}
 
     return;
 }

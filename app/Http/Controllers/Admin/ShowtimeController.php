@@ -85,7 +85,7 @@ class ShowtimeController extends Controller
     }
     public function edit(Showtime $showtime)
     {
-        if ($showtime->status !== 'scheduled' || $showtime->starts_at->isPast()) {
+      if ($showtime->status->value !== 'scheduled' || $showtime->starts_at->isPast()) {
             return redirect()->route('admin.showtimes.index')
                 ->withErrors('Past or cancelled showtimes are read-only.');
         }

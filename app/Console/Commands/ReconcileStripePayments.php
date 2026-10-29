@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\StripePaymentService;
+use App\Mail\BookingConfirmedMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -122,13 +124,15 @@ class ReconcileStripePayments extends Command
                         }
 
                         if ($lockedBooking->status === 'pending_payment') {
-                            $lockedBooking->update([
-                                'status' => 'confirmed',
-                                'confirmed_at' => now(),
-                            ]);
-                        }
+    $lockedBooking->update([
+        'status' => 'confirmed',
+        'confirmed_at' => now(),
+    ]);
 
-                        return 'paid';
+    return 'confirmed';
+}
+
+return 'paid';
                     });
 
 
@@ -169,13 +173,41 @@ if ($outcome === 'late_refund') {
 }
 
 
-                    if ($outcome === 'paid') {
-                        $updated++;
+                   if (in_array($outcome, ['confirmed', 'paid'], true)) {
+    $updated++;
 
-                        $this->info(
-                            "Payment {$payment->id}: marked paid; booking confirmed."
-                        );
-                    }
+    if ($outcome === 'confirmed') {
+        try {
+            $confirmedBooking = Booking::with([
+                'user',
+                'showtime.movie',
+                'bookingSeats.seat',
+            ])->find($payment->booking_id);
+
+            if ($confirmedBooking && $confirmedBooking->user?->email) {
+                Mail::to($confirmedBooking->user->email)
+                    ->send(new BookingConfirmedMail($confirmedBooking));
+
+                $this->info(
+                    "Booking {$confirmedBooking->id}: confirmation email sent."
+                );
+            }
+        } catch (Throwable $exception) {
+            Log::error('Booking confirmation email failed.', [
+                'booking_id' => $payment->booking_id,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $this->warn(
+                "Booking {$payment->booking_id}: email could not be sent."
+            );
+        }
+    }
+
+    $this->info(
+        "Payment {$payment->id}: marked paid; booking confirmed."
+    );
+}
 
                     continue;
                 }

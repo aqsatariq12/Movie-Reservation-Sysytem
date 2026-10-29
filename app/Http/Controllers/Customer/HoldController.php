@@ -11,22 +11,33 @@ use App\Models\Hold;
 use App\Models\Setting;
 use App\Models\Showtime;
 use Illuminate\Support\Facades\Gate;
+use App\Mail\BookingCreatedMail;
+use Illuminate\Support\Facades\Mail;
 
 class HoldController extends Controller
 {
-    public function store(
-        HoldSeatsRequest $request,
-        Showtime $showtime,
-        HoldSeatsAction $hold
-    ) {
-        $booking = $hold->execute(
-            $request->user(),
-            $showtime,
-            $request->seatIds()
-        );
+  public function store(
+    HoldSeatsRequest $request,
+    Showtime $showtime,
+    HoldSeatsAction $hold
+) {
+    $booking = $hold->execute(
+        $request->user(),
+        $showtime,
+        $request->seatIds()
+    );
 
-        return redirect()->route('holds.show', $booking->hold_id);
-    }
+    $booking->load([
+        'user',
+        'showtime.movie',
+        'bookingSeats.seat',
+    ]);
+
+    Mail::to($booking->user->email)
+        ->send(new BookingCreatedMail($booking));
+
+    return redirect()->route('holds.show', $booking->hold_id);
+}
 
     public function show(Hold $hold)
     {

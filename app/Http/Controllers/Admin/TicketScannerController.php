@@ -8,6 +8,8 @@ use App\Enums\TicketStatus;
 use App\Models\Showtime;
 use App\Models\Ticket;
 use App\Models\TicketScan;
+use App\Mail\TicketScannedMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -62,7 +64,11 @@ class TicketScannerController extends Controller
                 ->count();
         }
 
-        return view('admin.ticket-scanner', compact(
+        $view = $request->user()->isstaff()
+    ? 'staff.ticket-scanner'
+    : 'admin.ticket-scanner';
+
+return view($view, compact(
             'showtimes',
             'selectedShowtimeId',
             'selectedShowtime',
@@ -94,13 +100,18 @@ class TicketScannerController extends Controller
                 ScanResult::Invalid,
                 $request->user()->id
             );
+return redirect()
+    ->route(
+        $request->user()->isStaff()
+            ? 'ui.staff.admitted'
+            : 'admin.ticket-scanner',
+        ['showtime_id' => $selectedShowtimeId]
+    )
+    ->with('scan_result', [
+        'type' => 'error',
+        'message' => 'Invalid ticket QR code.',
+    ]);
 
-            return back()
-                ->with('scan_result', [
-                    'type' => 'error',
-                    'message' => 'Invalid ticket QR code.',
-                ])
-                ->with('selected_showtime_id', $selectedShowtimeId);
         }
 
         $result = DB::transaction(function () use (
@@ -131,8 +142,7 @@ class TicketScannerController extends Controller
                 $now->gt($showtime->starts_at->copy()->addMinutes(30)) => ScanResult::Expired,
                 default => ScanResult::Admitted,
             };
-
-            if ($scanResult === ScanResult::Admitted) {
+        if ($scanResult === ScanResult::Admitted) {
                 $lockedTicket->status = TicketStatus::Used;
                 $lockedTicket->used_at = $now;
                 $lockedTicket->save();
@@ -171,20 +181,52 @@ class TicketScannerController extends Controller
         ];
 
         [$type, $message] = $messages[$result['result']->value];
+        if ($result['result'] === ScanResult::Admitted) {
+    try {
+        $ticketScan = TicketScan::with([
+            'ticket.bookingSeat.booking.user',
+            'ticket.bookingSeat.booking.showtime.movie',
+            'ticket.bookingSeat.seat',
+        ])
+            ->where('ticket_id', $ticket->id)
+            ->where('result', ScanResult::Admitted)
+            ->latest('scanned_at')
+            ->first();
 
-        return redirect()
-            ->route('admin.ticket-scanner', [
-                'showtime_id' => $selectedShowtimeId,
-            ])
-            ->with('scan_result', [
-                'type' => $type,
-                'message' => $message,
-                'movie' => $result['movie'],
-                'seat' => $result['seat'],
-            ]);
+        $customerEmail = $ticketScan?->ticket?->bookingSeat?->booking?->user?->email;
+
+        if ($ticketScan && $customerEmail) {
+            Mail::to($customerEmail)->send(
+                new TicketScannedMail($ticketScan)
+            );
+        }
+    } catch (\Throwable $exception) {
+        \Illuminate\Support\Facades\Log::error(
+            'Ticket scan email failed.',
+            [
+                'ticket_id' => $ticket->id,
+                'message' => $exception->getMessage(),
+            ]
+        );
     }
+}
+$route = $request->user()->isStaff()
+    ? 'ui.staff.admitted'
+    : 'admin.ticket-scanner';
 
-    private function recordScan(
+return redirect()
+    ->route($route, [
+        'showtime_id' => $selectedShowtimeId,
+    ])
+    ->with('scan_result', [
+        'type' => $type,
+        'message' => $message,
+        'movie' => $result['movie'],
+        'seat' => $result['seat'],
+    ]);
+
+    }
+private function recordScan(
         ?int $ticketId,
         ?int $showtimeId,
         string $tokenHash,

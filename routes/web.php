@@ -1,9 +1,11 @@
-
 <?php
 
 use App\Http\Controllers\Admin\GenreController;
 use App\Http\Controllers\Admin\ScreenController;
 use App\Http\Controllers\Admin\ShowtimeController;
+use App\Http\Controllers\Admin\MovieController as AdminMovieController;
+use App\Http\Controllers\Staff\AdmittedResultController;
+use App\Http\Controllers\Admin\TicketScannerController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\Customer\HoldController;
 use App\Http\Controllers\Customer\SeatMapController;
@@ -11,9 +13,9 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\Staff\TodayShowtimesController;
+use App\Http\Controllers\Staff\ShowRosterController;
 use App\Http\Controllers\TicketController;
-use App\Http\Controllers\Admin\MovieController as AdminMovieController;
-use App\Http\Controllers\Admin\TicketScannerController;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -94,8 +96,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/bookings/{booking}/release-hold', [StripePaymentController::class, 'releaseHold'])
         ->name('booking.release-hold');
-    
-        // Customer tickets
+
+    // Customer tickets
     Route::get('/bookings/{booking}/tickets', [TicketController::class, 'show'])
         ->name('booking.tickets');
 
@@ -140,11 +142,69 @@ Route::middleware(['auth', 'verified', 'admin'])
 
         Route::resource('showtimes', ShowtimeController::class)
             ->except(['show', 'destroy']);
-            Route::get('/ticket-scanner', [TicketScannerController::class, 'index'])
-    ->name('ticket-scanner');
-
-Route::post('/ticket-scanner/scan', [TicketScannerController::class, 'scan'])
-    ->name('ticket-scanner.scan');
     });
+
+// Ticket Scanner — Staff and Admin
+// Scanner routes are intentionally OUTSIDE the admin-only group.
+
+/*
+|--------------------------------------------------------------------------
+| Admin Ticket Scanner
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified', 'staff_or_admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/ticket-scanner', [TicketScannerController::class, 'index'])
+            ->name('ticket-scanner');
+
+        Route::post('/ticket-scanner/scan', [TicketScannerController::class, 'scan'])
+            ->name('ticket-scanner.scan');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Staff Ticket Scanner
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified', 'staff_or_admin'])
+    ->prefix('staff')
+    ->name('ui.staff.')
+    ->group(function () {
+        Route::get('/ticket-scanner', [TicketScannerController::class, 'index'])
+            ->name('scanner');
+
+        Route::post('/ticket-scanner/scan', [TicketScannerController::class, 'scan'])
+            ->name('scanner.scan');
+    });
+
+
+// CineBook Staff pages
+Route::get('/staff/today', [TodayShowtimesController::class, 'index'])
+    ->middleware(['auth', 'verified', 'staff_or_admin'])
+    ->name('ui.staff.today');
+
+Route::get('/staff/lookup', [\App\Http\Controllers\Staff\BookingLookupController::class, 'index'])
+    ->middleware(['auth', 'verified', 'staff_or_admin'])
+    ->name('ui.staff.lookup');
+
+Route::get('/staff/admitted', [AdmittedResultController::class, 'index'])
+    ->middleware(['auth', 'verified', 'staff_or_admin'])
+    ->name('ui.staff.admitted');
+
+Route::view('/staff/rejections', 'staff.six-rejection-results')
+    ->name('ui.staff.rejections');
+
+Route::get('/staff/roster', [ShowRosterController::class, 'index'])
+    ->middleware(['auth', 'verified', 'staff_or_admin'])
+    ->name('ui.staff.roster');
+
+Route::view('/staff/supporting-customer', 'staff.supporting-customer')
+    ->name('ui.staff.supporting-customer');
+
+// Reuse the existing scanner
+Route::redirect('/staff/scan', '/staff/ticket-scanner')
+    ->name('ui.staff.scan');
 
 require __DIR__ . '/settings.php';

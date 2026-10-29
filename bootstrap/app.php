@@ -16,11 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(
             except: ['stripe/webhook']
         );
-
-        $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureAdmin::class,
-            'customer' => \App\Http\Middleware\EnsureCustomer::class,
-        ]);
+$middleware->alias([
+    'admin' => \App\Http\Middleware\EnsureAdmin::class,
+    'customer' => \App\Http\Middleware\EnsureCustomer::class,
+    'staff_or_admin' => \App\Http\Middleware\EnsureStaffOrAdmin::class,
+]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -25,7 +25,7 @@ class UpdateShowtimeAction
         return DB::transaction(function () use ($showtime, $movieId, $screenId, $startsAt, $basePriceCents, $surcharge) {
             $show = Showtime::query()->lockForUpdate()->findOrFail($showtime->id);
 
-            if ($show->status !== 'scheduled' || $show->starts_at->isPast()) {
+           if ($show->status->value !== 'scheduled' || $show->starts_at->isPast()) {
                 throw ValidationException::withMessages([
                     'showtime_error' => 'Past or cancelled showtimes are read-only.',
                 ]);
