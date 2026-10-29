@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class WebhookEvent extends Model
 {
     use HasFactory;
-
+    protected $table = 'webhook_events';
     protected $fillable = [
         'provider_event_id',
         'event_type',
@@ -24,6 +24,7 @@ class WebhookEvent extends Model
         return [
             'status' => WebhookEventStatus::class,
             'processed_at' => 'datetime',
+            'booking_id' => 'integer',
         ];
     }
 

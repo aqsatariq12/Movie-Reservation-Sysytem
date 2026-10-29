@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use App\Actions\Bookings\CancelBookingAction;
 
 class BookingController extends Controller
 {
@@ -237,7 +238,19 @@ class BookingController extends Controller
             'emailPending' => $emailPending,
         ]);
     }
+    public function cancel(
+        Booking $booking,
+        CancelBookingAction $action,
+        Request $request
+    ): RedirectResponse {
+        Gate::authorize('view', $booking);
 
+        $action->execute($booking, (int) $request->user()->id);
+
+        return redirect()
+            ->route('bookings.cancelled', $booking)
+            ->with('status', 'Your cancellation has been submitted. Your refund is pending.');
+    }
     public function confirmCancel(Booking $booking): View|RedirectResponse
     {
         Gate::authorize('view', $booking);
@@ -246,7 +259,7 @@ class BookingController extends Controller
 
         $showtime = $booking->showtime;
         $windowHours = \App\Models\Setting::readInt('cancellation_window_hours', 2);
-        
+
         $deadline = $showtime->starts_at->copy()->subHours($windowHours);
         $anyScanned = $booking->tickets->contains(fn($t) => $this->val($t->status) === 'used');
 

@@ -33,6 +33,18 @@
                             <p>Your QR tickets will stop working. Refund processing is separate from the cancellation and may take time to complete.</p>
                         </div>
 
+                        @if ($errors->any())
+    <div class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+        <p class="font-semibold">Cancellation could not be completed.</p>
+
+        <ul class="mt-2 list-disc pl-5">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
                         <div class="flex flex-wrap items-center gap-4">
                             <a href="{{ route('bookings.show', $booking) }}"
                                 class="rounded-xl border border-[#e3d8c8] bg-white px-5 py-[13px] text-sm font-semibold text-[#1f2937] hover:bg-[#f7f4ee]">

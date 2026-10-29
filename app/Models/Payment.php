@@ -29,6 +29,7 @@ class Payment extends Model
         return [
             'status' => PaymentStatus::class,
             'paid_at' => 'datetime',
+            'amount_cents' => 'integer',
         ];
     }
 

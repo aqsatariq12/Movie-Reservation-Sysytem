@@ -16,6 +16,11 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\FailedJobController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\StripePaymentController;
+use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\TicketController;
+use App\Models\Booking;
+use Illuminate\Http\Request;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -32,6 +37,8 @@ Route::middleware(['auth', 'verified', 'customer'])->group(function () {
     Route::get('/my-bookings', [BookingController::class, 'index'])->name('bookings.index');
     Route::get('/my-bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
     Route::get('/my-bookings/{booking}/cancel', [BookingController::class, 'confirmCancel'])->name('bookings.cancel.confirm');
+    Route::post('/my-bookings/{booking}/cancel', [BookingController::class, 'cancel'])
+    ->name('bookings.cancel');
     Route::get('/my-bookings/{booking}/cancelled', [BookingController::class, 'cancelled'])->name('bookings.cancelled');
     // Logic phase: Route::post('/my-bookings/{booking}/cancel', ...)->name('bookings.cancel');
 
@@ -116,5 +123,54 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
     });
+
+
+/*
+|--------------------------------------------------------------------------
+| Stripe Payments and Customer Tickets
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->group(function () {
+    Route::post('/bookings/{booking}/checkout', [StripePaymentController::class, 'checkout'])
+        ->name('payment.checkout');
+
+    Route::get('/payment/success', [StripePaymentController::class, 'success'])
+        ->name('payment.success');
+
+    Route::get('/payment/cancel', [StripePaymentController::class, 'cancel'])
+        ->name('payment.cancel');
+
+    Route::get('/payment/failed', [StripePaymentController::class, 'failed'])
+        ->name('payment.failed');
+
+    Route::get('/payment/expired', [StripePaymentController::class, 'expired'])
+        ->name('payment.expired');
+
+    Route::get('/payment/late-refund', [StripePaymentController::class, 'lateRefund'])
+        ->name('payment.late-refund');
+
+    Route::get('/bookings/{booking}/recovery-states', function (Request $request, Booking $booking) {
+        abort_unless(
+            (int) $booking->user_id === (int) $request->user()->id,
+            403
+        );
+
+        return view('bookings.recovery-states', [
+            'booking' => $booking->load(['payments', 'hold']),
+        ]);
+    })->name('booking.recovery-states');
+
+    Route::post('/bookings/{booking}/release-hold', [StripePaymentController::class, 'releaseHold'])
+        ->name('booking.release-hold');
+
+    Route::get('/bookings/{booking}/tickets', [TicketController::class, 'show'])
+        ->name('booking.tickets');
+});
+
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
+    ->name('stripe.webhook');
+
+
 // TEMP: preview error pages. Remove when done.
 require __DIR__ . '/settings.php';

@@ -28,6 +28,7 @@ class Refund extends Model
             'status' => RefundStatus::class,
             'requested_at' => 'datetime',
             'completed_at' => 'datetime',
+            'amount_cents' => 'integer',
         ];
     }
 
