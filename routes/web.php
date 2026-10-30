@@ -22,6 +22,7 @@ use App\Http\Controllers\TicketController;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -105,23 +106,34 @@ Route::middleware(['auth', 'verified', 'admin'])
         // Booking management (read-only list, detail + CSV export)
         // Booking management (read-only list, detail + CSV export)
 // Booking management
-Route::get('/bookings', [AdminBookingController::class, 'index'])
-    ->name('bookings.index');
+        Route::get('/bookings', [AdminBookingController::class, 'index'])
+            ->name('bookings.index');
 
-Route::get('/bookings/export', [AdminBookingController::class, 'export'])
-    ->name('bookings.export');
+        Route::get('/bookings/export', [AdminBookingController::class, 'export'])
+            ->name('bookings.export');
 
-Route::get('/bookings/{booking}/cancel', [AdminBookingController::class, 'confirmCancel'])
-    ->whereNumber('booking')
-    ->name('bookings.cancel');
+        Route::get('/bookings/{booking}/cancel', [AdminBookingController::class, 'confirmCancel'])
+            ->whereNumber('booking')
+            ->name('bookings.cancel');
 
-Route::post('/bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])
-    ->whereNumber('booking')
-    ->name('bookings.cancel.store');
+        Route::post('/bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])
+            ->whereNumber('booking')
+            ->name('bookings.cancel.store');
 
-Route::get('/bookings/{booking}', [AdminBookingController::class, 'show'])
-    ->whereNumber('booking')
-    ->name('bookings.show');
+        Route::get('/bookings/{booking}', [AdminBookingController::class, 'show'])
+            ->whereNumber('booking')
+            ->name('bookings.show');
+
+        // Payments (read-only list + CSV export)
+        Route::get('/payments', [AdminPaymentController::class, 'index'])
+            ->name('payments.index');
+
+        Route::get('/payments/export', [AdminPaymentController::class, 'export'])
+            ->name('payments.export');
+
+        Route::get('/payments/{payment}', [AdminPaymentController::class, 'show'])
+            ->whereNumber('payment')
+            ->name('payments.show');
 
         // Staff & admin role management
         Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');

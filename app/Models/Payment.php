@@ -42,4 +42,33 @@ class Payment extends Model
     {
         return $this->hasMany(Refund::class);
     }
+
+        /** A pending payment older than this is flagged as "stuck" in admin. */
+    public const STUCK_AFTER_MINUTES = 15;
+
+    public function isStuck(): bool
+    {
+        return $this->status === PaymentStatus::Pending
+            && $this->created_at !== null
+            && $this->created_at->lt(now()->subMinutes(self::STUCK_AFTER_MINUTES));
+    }
+
+    /**
+     * Admin-facing label + tone for the payments table.
+     *
+     * @return array{label: string, tone: string}
+     */
+    public function adminState(): array
+    {
+        return match ($this->status) {
+            PaymentStatus::Paid => ['label' => 'Succeeded', 'tone' => 'brand'],
+            PaymentStatus::Pending => [
+                'label' => $this->isStuck() ? 'Processing · stuck' : 'Processing',
+                'tone' => 'brand',
+            ],
+            PaymentStatus::Failed => ['label' => 'Failed', 'tone' => 'muted'],
+            PaymentStatus::Refunded => ['label' => 'Refunded', 'tone' => 'muted'],
+            PaymentStatus::Expired => ['label' => 'Expired', 'tone' => 'muted'],
+        };
+    }
 }
