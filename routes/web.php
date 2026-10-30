@@ -176,11 +176,7 @@ Route::middleware(['auth', 'verified', 'staff_or_admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/ticket-scanner', [TicketScannerController::class, 'index'])
-            ->name('ticket-scanner');
-
-        Route::post('/ticket-scanner/scan', [TicketScannerController::class, 'scan'])
-            ->name('ticket-scanner.scan');
+        
     });
 
 /*
@@ -188,7 +184,7 @@ Route::middleware(['auth', 'verified', 'staff_or_admin'])
 | Staff Ticket Scanner
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'staff_or_admin'])
+Route::middleware(['auth', 'verified', 'staff'])
     ->prefix('staff')
     ->name('ui.staff.')
     ->group(function () {

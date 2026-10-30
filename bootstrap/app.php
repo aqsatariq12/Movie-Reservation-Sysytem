@@ -20,6 +20,7 @@ $middleware->alias([
     'admin' => \App\Http\Middleware\EnsureAdmin::class,
     'customer' => \App\Http\Middleware\EnsureCustomer::class,
     'staff_or_admin' => \App\Http\Middleware\EnsureStaffOrAdmin::class,
+    'staff' => \App\Http\Middleware\EnsureStaff::class,
 ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

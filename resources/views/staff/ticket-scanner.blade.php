@@ -1,7 +1,7 @@
 @extends('layouts.staff')
 
 @section('content')
-<div class="space-y-7 text-[#f4f7ff]">
+<div id="staff-ticket-scanner" class="space-y-7 text-[#f4f7ff]">
 
     {{-- Page heading --}}
     <div>

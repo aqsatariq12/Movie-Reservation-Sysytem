@@ -23,6 +23,7 @@
                 <a href="{{ route('dashboard') }}" class="hover:text-white">My bookings</a>
                 <span class="hidden md:inline">CineBook Downtown</span>
                 <span class="hidden sm:inline">{{ auth()->user()->name ?? 'Guest' }} ▾</span>
+            
             </nav>
         </div>
     </header>
