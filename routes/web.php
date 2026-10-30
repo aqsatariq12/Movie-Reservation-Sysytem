@@ -65,14 +65,126 @@ Route::middleware(['auth', 'verified', 'admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+
         Route::get('/dashboard', function () {
-            return view('admin.dashboard', [
-                'moviesCount' => \App\Models\Movie::count(),
-                'screensCount' => \App\Models\Screen::count(),
-                'showtimesCount' => \App\Models\Showtime::count(),
-                'bookingsCount' => \App\Models\Booking::count(),
-            ]);
+            $today = now()->startOfDay();
+            $next24Hours = now()->addHours(24);
+
+            // Basic cinema statistics
+            $moviesCount = \App\Models\Movie::count();
+            $screensCount = \App\Models\Screen::count();
+            $showtimesCount = \App\Models\Showtime::count();
+            $bookingsCount = \App\Models\Booking::count();
+
+            // Confirmed bookings today
+            $confirmedToday = \App\Models\Booking::where(
+                'status',
+                \App\Enums\BookingStatus::Confirmed->value
+            )->whereBetween('confirmed_at', [$today, now()])
+                ->count();
+
+            // Revenue received today
+            $revenueToday = \App\Models\Payment::where(
+                'status',
+                \App\Enums\PaymentStatus::Paid->value
+            )->whereBetween('paid_at', [$today, now()])
+                ->sum('amount_cents');
+
+            // Successful refunds completed today
+            $refundsToday = \App\Models\Refund::where(
+                'status',
+                \App\Enums\RefundStatus::Succeeded->value
+            )->whereBetween('completed_at', [$today, now()])
+                ->sum('amount_cents');
+
+            $netCashMovementToday = $revenueToday - $refundsToday;
+            // Upcoming showtimes within the next 24 hours
+            $upcomingShowtimes = \App\Models\Showtime::with(['movie', 'screen'])
+                ->withCount([
+                    'showtimeSeats as total_seats',
+                    'showtimeSeats as sold_seats' => function ($query) {
+                    $query->where(
+                        'status',
+                        \App\Enums\ShowtimeSeatStatus::Sold->value
+                    );
+                },
+                ])
+                ->where('status', \App\Enums\ShowtimeStatus::Scheduled->value)
+                ->whereBetween('starts_at', [now(), $next24Hours])
+                ->orderBy('starts_at')
+                ->get();
+            $upcomingShowtimesCount = $upcomingShowtimes->count();
+            // Overall occupancy for upcoming showtimes
+            $totalSeats = $upcomingShowtimes->sum('total_seats');
+            $soldSeats = $upcomingShowtimes->sum('sold_seats');
+
+            $occupancy = $totalSeats > 0
+                ? round(($soldSeats / $totalSeats) * 100)
+                : 0;
+
+            // Hourly confirmed bookings today
+            $hourlyBookings = \App\Models\Booking::where(
+                'status',
+                \App\Enums\BookingStatus::Confirmed->value
+            )->whereBetween('confirmed_at', [$today, now()])
+                ->get(['confirmed_at'])
+                ->groupBy(fn($booking) => $booking->confirmed_at->format('H'));
+
+            $salesChart = collect(range(0, now()->hour))
+                ->map(function ($hour) use ($hourlyBookings) {
+                    return [
+                        'hour' => str_pad($hour, 2, '0', STR_PAD_LEFT) . ':00',
+                        'sales' => $hourlyBookings->get(
+                            str_pad($hour, 2, '0', STR_PAD_LEFT),
+                            collect()
+                        )->count(),
+                    ];
+                });
+
+            // Needs attention
+            $failedRefunds = \App\Models\Refund::where(
+                'status',
+                \App\Enums\RefundStatus::Failed->value
+            )->count();
+
+            $stuckPayments = \App\Models\Payment::where(
+                'status',
+                \App\Enums\PaymentStatus::Pending->value
+            )->where('created_at', '<', now()->subMinutes(
+                        \App\Models\Payment::STUCK_AFTER_MINUTES
+                    ))->count();
+
+            $failedWebhooks = \App\Models\WebhookEvent::where(
+                'status',
+                \App\Enums\WebhookEventStatus::Failed->value
+            )->count();
+
+            $failedJobs = \Illuminate\Support\Facades\Schema::hasTable('failed_jobs')
+                ? \Illuminate\Support\Facades\DB::table('failed_jobs')->count()
+                : 0;
+
+            return view('admin.dashboard', compact(
+                'moviesCount',
+                'screensCount',
+                'showtimesCount',
+                'bookingsCount',
+                'confirmedToday',
+                'netCashMovementToday',
+                'revenueToday',
+                'refundsToday',
+                'upcomingShowtimesCount',
+                'occupancy',
+                'soldSeats',
+                'totalSeats',
+                'salesChart',
+                'failedRefunds',
+                'stuckPayments',
+                'failedWebhooks',
+                'failedJobs',
+                'upcomingShowtimes'
+            ));
         })->name('dashboard');
+
 
         // Screen management
         Route::resource('screens', ScreenController::class)

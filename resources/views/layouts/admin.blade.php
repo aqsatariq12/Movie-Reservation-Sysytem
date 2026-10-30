@@ -32,15 +32,39 @@
 
 <head>
     @include('partials.head')
+    <style>
+    .admin-sidebar-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: #344663 #0c1424;
+    }
+
+    .admin-sidebar-scroll::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .admin-sidebar-scroll::-webkit-scrollbar-track {
+        background: #0c1424;
+        border-radius: 10px;
+    }
+
+    .admin-sidebar-scroll::-webkit-scrollbar-thumb {
+        background: #344663;
+        border-radius: 10px;
+    }
+
+    .admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background: #347bff;
+    }
+</style>
 </head>
 
 <body class="min-h-screen bg-[#080e1b] text-[#f4f7ff]">
     <div class="flex min-h-screen">
 
-        <aside class="flex w-56 shrink-0 flex-col gap-6 border-r border-[#283750] bg-[#0c1424] px-5 py-8">
+        <aside class="sticky top-0 flex h-screen w-56 shrink-0 flex-col gap-6 overflow-hidden border-r border-[#283750] bg-[#0c1424] px-5 py-8">
             <p class="text-[22px]"><span class="text-[#347bff]">▰</span> cinebook</p>
 
-            <nav class="flex flex-col gap-4 text-[13px]">
+            <nav class="admin-sidebar-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-2 text-[13px]">
                 @foreach ($navGroups as $group => $items)
                     <div class="flex flex-col">
                         <p class="mb-1 text-xs uppercase tracking-wide text-[#a0aec5]">{{ $group }}</p>
@@ -58,7 +82,7 @@
                 @endforeach
             </nav>
 
-            <div class="mt-auto flex flex-col gap-1 text-[13px] text-[#a0aec5]">
+           <div class="mt-auto shrink-0 border-t border-[#283750] pt-5 flex flex-col gap-2 text-[13px] text-[#a0aec5]">
                 <p>
                     {{ auth()->user()->name }} ·
                     {{ ucfirst(auth()->user()->role?->value ?? 'user') }}
