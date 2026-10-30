@@ -27,14 +27,14 @@ class IssueTicketsForBooking
             ->pluck('id');
 
         foreach ($seatIds as $bookingSeatId) {
-            Ticket::firstOrCreate(
-                ['booking_seat_id' => $bookingSeatId],
-                [
-                    'booking_id' => $booking->id,
-                    'token'      => Str::random(40),
-                    'status'     => 'valid',
-                ]
-            );
+        Ticket::firstOrCreate(
+    ['booking_seat_id' => $bookingSeatId],
+    [
+        'booking_id' => $booking->id,
+        'token'      => Str::random(40),
+        'status'     => 'valid',
+    ]
+);
         }
     }
 }
