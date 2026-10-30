@@ -10,41 +10,48 @@ use App\Enums\MovieStatus;
 class MovieController extends Controller
 {
 
-    public function index(Request $request): View
-    {
-        $search = $request->string('search')->toString();
-        $genreSlug = $request->string('genre')->toString();
+   public function index(Request $request): View
+{
+    $search = $request->string('search')->toString();
+    $genreSlug = $request->string('genre')->toString();
 
-        $validated = $request->validate([
-            'show_date' => ['nullable', 'date'],
-        ]);
+    $validated = $request->validate([
+        'show_date' => ['nullable', 'date'],
+        'tab' => ['nullable', 'in:now-showing,coming-soon'],
+    ]);
 
-        $showDate = $validated['show_date'] ?? null;
+    $showDate = $validated['show_date'] ?? null;
+    $tab = $validated['tab'] ?? 'now-showing';
 
-        $movies = Movie::with('genres')
-            ->visible()
-            ->search($search)
-            ->inGenre($genreSlug)
-            ->when($showDate, function ($query) use ($showDate) {
-                $query->whereHas('showtimes', function ($showtimes) use ($showDate) {
-                    $showtimes->scheduled()
-                        ->upcoming()
-                        ->whereDate('starts_at', $showDate);
-                });
-            })
-            ->latest()
-            ->get();
+    $movies = Movie::with('genres')
+        ->visible()
+        ->when($tab === 'coming-soon',
+            fn ($query) => $query->comingSoon(),
+            fn ($query) => $query->nowShowing()
+        )
+        ->search($search)
+        ->inGenre($genreSlug)
+        ->when($showDate, function ($query) use ($showDate) {
+            $query->whereHas('showtimes', function ($showtimes) use ($showDate) {
+                $showtimes->scheduled()
+                    ->upcoming()
+                    ->whereDate('starts_at', $showDate);
+            });
+        })
+        ->latest()
+        ->get();
 
-        $genres = Genre::orderBy('name')->get();
+    $genres = Genre::orderBy('name')->get();
 
-        return view('movies.index', compact(
-            'movies',
-            'genres',
-            'search',
-            'genreSlug',
-            'showDate'
-        ));
-    }
+    return view('movies.index', compact(
+        'movies',
+        'genres',
+        'search',
+        'genreSlug',
+        'showDate',
+        'tab'
+    ));
+}
 
 
 

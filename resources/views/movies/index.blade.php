@@ -16,15 +16,32 @@
             </p>
 
             <div class="flex flex-wrap gap-5 text-[14px]">
-                <a href="{{ route('movies.index') }}"
-                   class="border-b-2 border-blue-500 pb-2 font-semibold text-blue-500">
-                    Now showing
-                </a>
+    <a href="{{ route('movies.index', array_filter([
+        'tab' => 'now-showing',
+        'search' => $search,
+        'genre' => $genreSlug,
+        'show_date' => $showDate,
+    ])) }}"
+       class="border-b-2 pb-2 font-semibold
+       {{ $tab === 'now-showing'
+            ? 'border-blue-500 text-blue-500'
+            : 'border-transparent text-cb-muted hover:text-cb-ink' }}">
+        Now showing
+    </a>
 
-                <span class="pb-2 text-cb-muted">
-                    Coming soon
-                </span>
-            </div>
+    <a href="{{ route('movies.index', array_filter([
+        'tab' => 'coming-soon',
+        'search' => $search,
+        'genre' => $genreSlug,
+        'show_date' => $showDate,
+    ])) }}"
+       class="border-b-2 pb-2 font-semibold
+       {{ $tab === 'coming-soon'
+            ? 'border-blue-500 text-blue-500'
+            : 'border-transparent text-cb-muted hover:text-cb-ink' }}">
+        Coming soon
+    </a>
+</div>
         </div>
 
         {{-- Search and filters: visual layout for now --}}
@@ -46,6 +63,8 @@
                     placeholder="Search by title..."
                     class="w-full bg-transparent text-[14px] text-cb-ink outline-none"
                 >
+
+                <input type="hidden" name="tab" value="{{ $tab }}">
             </label>
 
             <label class="rounded-2xl border border-cb-line bg-white p-4">
