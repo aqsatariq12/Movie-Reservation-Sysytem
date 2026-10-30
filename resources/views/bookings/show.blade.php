@@ -47,12 +47,16 @@
                         class="rounded-xl border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:bg-[#2a68dc] print:hidden">
                         View tickets →
                     </a>
-                @elseif ($status === 'pending_payment')
-                    <a href="{{ $resumeUrl }}"
-                        class="rounded-xl border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:bg-[#2a68dc] print:hidden">
-                        Resume payment
-                    </a>
                 @endif
+
+                {{-- Temporarily disabled Resume Payment button
+                @if ($status === 'pending_payment')
+                <a href="{{ $resumeUrl }}"
+                    class="rounded-xl border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:bg-[#2a68dc] print:hidden">
+                    Resume payment
+                </a>
+                @endif
+                --}}
 
                 <button type="button" onclick="window.print()"
                     class="rounded-xl border border-[#e3d8c8] bg-white px-5 py-[13px] text-sm text-[#1f2937] hover:bg-[#f7f4ee] print:hidden">
