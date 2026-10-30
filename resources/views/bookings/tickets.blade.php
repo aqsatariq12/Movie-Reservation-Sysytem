@@ -7,6 +7,8 @@ $ref    = data_get($b, 'booking_reference');
 $guest  = auth()->user()->name ?? 'Guest';
 $list   = $tickets ?? [];
 $n      = count($list);
+$usedCount = collect($list)->where('status', 'used')->count();
+$validCount = $n - $usedCount;
    
 @endphp
 
@@ -19,7 +21,9 @@ $n      = count($list);
         </div>
 
         <div class="flex flex-col gap-4 md:flex-row md:items-center print:hidden">
-            <p class="text-xs text-[#60d4ae] md:flex-1">✓ Confirmed · {{ $n }} valid {{ $n === 1 ? 'ticket' : 'tickets' }}</p>
+            <p class="text-xs text-[#60d4ae] md:flex-1">
+    ✓ {{ $validCount }} valid · {{ $usedCount }} admitted · {{ $n }} total tickets
+</p>
             <p class="text-sm leading-[1.45] md:flex-1">{{ $guest }} · {{ $n }} {{ $n === 1 ? 'seat' : 'seats' }}</p>
             <div class="flex flex-wrap gap-3">
                 <button type="button" onclick="window.print()" class="rounded-lg border border-[#347bff] bg-[#347bff] px-5 py-[13px] text-sm text-white hover:brightness-110">Print / Save as PDF</button>
@@ -46,6 +50,19 @@ $n      = count($list);
                         <div class="min-w-0 flex-1 text-xs leading-[1.8]">
                             <p class="text-5xl font-bold text-[#f4f7ff]">{{ $t['seat'] }}</p>
                             <p>{{ $t['type'] ?? 'Standard' }} seat</p>
+                            @if (strtolower($t['status'] ?? '') === 'used')
+    <p class="mt-2 inline-block rounded-md bg-red-100 px-3 py-1 font-bold text-red-700">
+        ✓ SCANNED — ALREADY ADMITTED
+    </p>
+@elseif (strtolower($t['status'] ?? '') === 'valid')
+    <p class="mt-2 inline-block rounded-md bg-green-100 px-3 py-1 font-bold text-green-700">
+        VALID — NOT SCANNED
+    </p>
+@else
+    <p class="mt-2 inline-block rounded-md bg-gray-200 px-3 py-1 font-bold text-gray-700">
+        {{ strtoupper($t['status'] ?? 'UNKNOWN') }}
+    </p>
+@endif
                             <p>{{ $ref }}</p>
                             <p>Ticket {{ $t['code'] }}</p>
                         </div>
@@ -70,4 +87,40 @@ $n      = count($list);
             <a href="{{ route('bookings.index') }}" class="mt-4 inline-block hover:text-white">← Back to My bookings</a>
         </div>
     </div>
+    <style>
+@media print {
+    body,
+    body * {
+        color: #000000 !important;
+    }
+
+    article {
+        background: #ffffff !important;
+        border-color: #cccccc !important;
+    }
+
+    article .bg-white {
+        background: #ffffff !important;
+    }
+
+    article svg {
+        color: #000000 !important;
+    }
+     article {
+        overflow: visible !important;
+        break-inside: avoid !important;
+    }
+
+    article svg {
+        display: block !important;
+        width: 200px !important;
+        height: 200px !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+        opacity: 1 !important;
+        filter: none !important;
+        background: #ffffff !important;
+    }
+}
+</style>
 </x-layouts::site>

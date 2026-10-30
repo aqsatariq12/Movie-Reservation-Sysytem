@@ -20,9 +20,29 @@ use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', HomeController::class)->name('home');
+Route::get('/', function (Request $request) {
+    if ($request->user()?->isAdmin()) {
+        return redirect()->route('admin.dashboard');
+    }
 
-Route::get('/dashboard', function () {
+    if ($request->user()?->isStaff()) {
+        return redirect()->route('ui.staff.today');
+    }
+
+    return app(HomeController::class)($request, app(\App\Actions\Home\GetHomePageData::class));
+})->name('home');
+
+Route::get('/dashboard', function (Request $request) {
+    $user = $request->user();
+
+    if ($user->isAdmin()) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    if ($user->isStaff()) {
+        return redirect()->route('ui.staff.today');
+    }
+
     return redirect()->route('home');
 })->middleware(['auth', 'verified'])->name('dashboard');
 

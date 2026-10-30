@@ -204,29 +204,47 @@
 
 {{-- Keep scanner ready for the next USB/manual token --}}
 
-{{-- Keep scanner ready for the next USB/manual token --}}
+
 <script>
+
 document.addEventListener('DOMContentLoaded', function () {
     const tokenInput = document.getElementById('token');
     const scanForm = document.getElementById('ticket-scan-form');
+    const submitButton = scanForm?.querySelector('button[type="submit"]');
 
-    if (!tokenInput || !scanForm) return;
+    if (!tokenInput || !scanForm || !submitButton) return;
 
-    // Focus the scanner input when the page opens.
+    let isSubmitting = false;
+
     tokenInput.focus();
 
-    // Most USB QR scanners act like a keyboard and send Enter
-    // after typing the QR token. Submit once when Enter is received.
+    scanForm.addEventListener('submit', function (event) {
+        if (isSubmitting) {
+            event.preventDefault();
+            return;
+        }
+
+        if (tokenInput.value.trim() === '') {
+            event.preventDefault();
+            return;
+        }
+
+        isSubmitting = true;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Scanning...';
+    });
+
     tokenInput.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
 
-            if (tokenInput.value.trim() !== '') {
+            if (!isSubmitting && tokenInput.value.trim() !== '') {
                 scanForm.requestSubmit();
             }
         }
     });
 });
+
 </script>
 
 @endsection

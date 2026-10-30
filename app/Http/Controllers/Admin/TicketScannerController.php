@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\BookingStatus;
+use Carbon\Carbon;
 use App\Enums\ScanResult;
 use App\Enums\TicketStatus;
 use App\Models\Showtime;
@@ -128,9 +129,16 @@ return redirect()
             $booking = $lockedTicket->booking()
                 ->with(['showtime.movie', 'showtime.screen'])
                 ->first();
+$showtime = $booking?->showtime;
 
-            $showtime = $booking?->showtime;
-            $now = now();
+$now = now('Asia/Karachi');
+
+$showtimeStart = $showtime
+    ? Carbon::parse(
+        $showtime->getRawOriginal('starts_at'),
+        'Asia/Karachi'
+    )
+    : null;
 
             $scanResult = match (true) {
                 ! $booking || ! $showtime => ScanResult::Invalid,
@@ -138,8 +146,8 @@ return redirect()
                 $lockedTicket->status === TicketStatus::Void => ScanResult::Void,
                 $lockedTicket->status === TicketStatus::Used => ScanResult::AlreadyUsed,
                 $booking->status !== BookingStatus::Confirmed => ScanResult::Invalid,
-                $now->lt($showtime->starts_at->copy()->subHour()) => ScanResult::TooEarly,
-                $now->gt($showtime->starts_at->copy()->addMinutes(30)) => ScanResult::Expired,
+                $now->lt($showtimeStart->copy()->subHour()) => ScanResult::TooEarly,
+                $now->gt($showtimeStart->copy()->addMinutes(30)) => ScanResult::Expired,
                 default => ScanResult::Admitted,
             };
         if ($scanResult === ScanResult::Admitted) {

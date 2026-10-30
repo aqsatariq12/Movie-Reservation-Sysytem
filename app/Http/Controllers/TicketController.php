@@ -44,22 +44,21 @@ class TicketController extends Controller
             'tickets' => $tickets,
         ]);
     }
-
-   private function qrSvg(string $token): ?string
+private function qrSvg(string $token): ?string
 {
-    if (!class_exists(\BaconQrCode\Writer::class)) {
+    if (! class_exists(\BaconQrCode\Writer::class)) {
         return null;
     }
 
     $renderer = new \BaconQrCode\Renderer\ImageRenderer(
-        new \BaconQrCode\Renderer\RendererStyle\RendererStyle(148, 0),
+        new \BaconQrCode\Renderer\RendererStyle\RendererStyle(300, 10),
         new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
     );
 
     $svg = (new \BaconQrCode\Writer($renderer))
         ->writeString($token);
 
-    // SVG ke XML declaration ko remove karo, agar maujood ho.
+    // Remove XML declaration only; preserve the QR SVG itself.
     return preg_replace('/<\?xml.*?\?>\s*/s', '', $svg);
 }
 }

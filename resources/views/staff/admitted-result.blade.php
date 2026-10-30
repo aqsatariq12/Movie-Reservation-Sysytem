@@ -108,9 +108,10 @@
                 </section>
 
                 {{-- Scan another ticket --}}
-                <form method="POST"
-                      action="{{ route('ui.staff.scanner.scan') }}"
-                      class="flex flex-col gap-2">
+                <form id="admitted-scan-form"
+      method="POST"
+      action="{{ route('ui.staff.scanner.scan') }}"
+      class="flex flex-col gap-2">
                     @csrf
 
                     @if ($showtime)
@@ -145,7 +146,7 @@
                         </p>
                     @endif
 
-                    <button type="submit"
+                    <button  id="admitted-scan-button" type="submit"
                             @disabled(! $showtime)
                             class="mt-2 w-full rounded-lg bg-[#347bff] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit">
                         Scan next ticket
@@ -267,4 +268,32 @@
             </aside>
         </div>
     </div>
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('admitted-scan-form');
+    const button = document.getElementById('admitted-scan-button');
+
+    if (!form || !button) return;
+
+    let isSubmitting = false;
+
+    form.addEventListener('submit', function (event) {
+        if (isSubmitting) {
+            event.preventDefault();
+            return;
+        }
+
+        const tokenInput = form.querySelector('input[name="token"]');
+
+        if (!tokenInput || tokenInput.value.trim() === '') {
+            event.preventDefault();
+            return;
+        }
+
+        isSubmitting = true;
+        button.disabled = true;
+        button.textContent = 'Scanning...';
+    });
+});
+</script>
 </x-layouts::staff>

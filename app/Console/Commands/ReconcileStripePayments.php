@@ -123,16 +123,45 @@ class ReconcileStripePayments extends Command
                             return false;
                         }
 
-                        if ($lockedBooking->status === 'pending_payment') {
+                       if (!in_array(
+    $lockedBooking->status,
+    ['pending_payment', 'confirmed'],
+    true
+)) {
+    return false;
+}
+
+if ($lockedBooking->status === 'pending_payment') {
     $lockedBooking->update([
         'status' => 'confirmed',
         'confirmed_at' => now(),
     ]);
-
-    return 'confirmed';
 }
 
-return 'paid';
+// Convert held seats into sold seats.
+if ($lockedBooking->hold_id) {
+    DB::table('showtime_seats')
+        ->where('hold_id', $lockedBooking->hold_id)
+        ->where('status', 'held')
+        ->update([
+            'status' => 'sold',
+            'booking_id' => $lockedBooking->id,
+            'hold_id' => null,
+            'held_until' => null,
+            'updated_at' => now(),
+        ]);
+
+    // Convert the active hold.
+    DB::table('holds')
+        ->where('id', $lockedBooking->hold_id)
+        ->where('status', 'active')
+        ->update([
+            'status' => 'converted',
+            'updated_at' => now(),
+        ]);
+}
+
+return 'confirmed';
                     });
 
 

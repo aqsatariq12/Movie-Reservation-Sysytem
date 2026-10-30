@@ -34,8 +34,19 @@ class ReleaseHoldAction
                 ->find($hold->id);
 
             if (! $locked || $locked->status !== HoldStatus::Active) {
-                return false;
-            }
+    return false;
+}
+
+// Never release a hold if its booking has already been paid or refunded.
+$hasPaidPayment = DB::table('bookings')
+    ->join('payments', 'payments.booking_id', '=', 'bookings.id')
+    ->where('bookings.hold_id', $locked->id)
+    ->whereIn('payments.status', ['paid', 'refunded'])
+    ->exists();
+
+if ($hasPaidPayment) {
+    return false;
+}
 
             // Free only seats still held by this hold. Never free sold seats.
             ShowtimeSeat::query()
