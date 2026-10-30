@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Enums\RefundStatus;
-use App\Models\Payment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Refund extends Model
 {
@@ -14,6 +14,7 @@ class Refund extends Model
 
     protected $fillable = [
         'payment_id',
+        'retry_of_refund_id',
         'amount_cents',
         'provider_refund_id',
         'status',
@@ -35,5 +36,21 @@ class Refund extends Model
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class);
+    }
+
+    public function originalRefund(): BelongsTo
+    {
+        return $this->belongsTo(
+            Refund::class,
+            'retry_of_refund_id'
+        );
+    }
+
+    public function retryAttempts(): HasMany
+    {
+        return $this->hasMany(
+            Refund::class,
+            'retry_of_refund_id'
+        );
     }
 }

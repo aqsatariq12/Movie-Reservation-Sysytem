@@ -355,7 +355,7 @@ class StripeWebhookController extends Controller
                 return;
             }
 
-                        if (
+            if (
                 !in_array($booking->status, [
                     \App\Enums\BookingStatus::PendingPayment,
                     \App\Enums\BookingStatus::Confirmed,
@@ -366,7 +366,7 @@ class StripeWebhookController extends Controller
                 );
             }
 
-            if (! $booking->hold_id) {
+            if (!$booking->hold_id) {
                 throw new \RuntimeException(
                     'Booking has no associated seat hold.'
                 );
@@ -377,7 +377,7 @@ class StripeWebhookController extends Controller
                 ->where('booking_id', $booking->id)
                 ->orderBy('seat_id')
                 ->pluck('seat_id')
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->all();
 
             if (empty($bookingSeatIds)) {
@@ -394,7 +394,7 @@ class StripeWebhookController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (! $hold) {
+            if (!$hold) {
                 throw new \RuntimeException(
                     'Booking hold could not be verified.'
                 );
@@ -410,7 +410,7 @@ class StripeWebhookController extends Controller
 
             $actualSeatIds = $showtimeSeats
                 ->pluck('seat_id')
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->all();
 
             if (
@@ -435,7 +435,7 @@ class StripeWebhookController extends Controller
                     $seat->held_until !== null &&
                     \Carbon\Carbon::parse($seat->held_until)->isFuture();
 
-                if (! $alreadySoldToBooking && ! $stillHeldForBooking) {
+                if (!$alreadySoldToBooking && !$stillHeldForBooking) {
                     throw new \RuntimeException(
                         'A purchased seat is no longer held by this booking.'
                     );
@@ -443,15 +443,15 @@ class StripeWebhookController extends Controller
             }
 
             $heldSeatIds = $showtimeSeats
-                ->filter(fn ($seat) => $seat->status === 'held')
+                ->filter(fn($seat) => $seat->status === 'held')
                 ->pluck('id')
                 ->all();
 
             // Only convert seats if the hold is still active and valid.
-            if (! empty($heldSeatIds)) {
+            if (!empty($heldSeatIds)) {
                 if (
                     $hold->status !== 'active' ||
-                    ! \Carbon\Carbon::parse($hold->expires_at)->isFuture()
+                    !\Carbon\Carbon::parse($hold->expires_at)->isFuture()
                 ) {
                     throw new \RuntimeException(
                         'The seat hold has expired or is no longer active.'
@@ -675,16 +675,48 @@ class StripeWebhookController extends Controller
             ->where('provider_refund_id', $refundId)
             ->first();
 
-        if (
-            $existing &&
-            (int) $existing->payment_id !== (int) $payment->id
-        ) {
-            throw new \RuntimeException(
-                'Stripe refund ID is already linked to a different local payment.'
-            );
+        // First, try the exact local refund ID sent through Stripe metadata.
+        $metadataRefundId = $refund->metadata->local_refund_id ?? null;
+
+        if (!$existing && $metadataRefundId !== null) {
+            if (!ctype_digit((string) $metadataRefundId)) {
+                throw new \RuntimeException(
+                    'Stripe refund contains an invalid local refund ID.'
+                );
+            }
+
+            $existing = DB::table('refunds')
+                ->where('id', (int) $metadataRefundId)
+                ->first();
+
+            if (!$existing) {
+                throw new \RuntimeException(
+                    'Stripe refund metadata references a missing local refund.'
+                );
+            }
+
+            if (
+                (int) $existing->payment_id !== (int) $payment->id ||
+                (int) $existing->amount_cents !== (int) $refund->amount
+            ) {
+                throw new \RuntimeException(
+                    'Stripe refund metadata does not match the local payment or amount.'
+                );
+            }
+
+            if (
+                $existing->provider_refund_id !== null &&
+                $existing->provider_refund_id !== $refundId
+            ) {
+                throw new \RuntimeException(
+                    'Local refund is already linked to a different Stripe refund.'
+                );
+            }
         }
 
-        if (!$existing) {
+        // Preserve the existing matching behavior for older refunds
+// that do not contain local_refund_id metadata.
+        if (!$existing && $metadataRefundId === null) {
             $matchingRefunds = DB::table('refunds')
                 ->where('payment_id', $payment->id)
                 ->whereNull('provider_refund_id')
@@ -703,7 +735,14 @@ class StripeWebhookController extends Controller
             $existing = $matchingRefunds->first();
         }
 
-
+        if (
+            $existing &&
+            (int) $existing->payment_id !== (int) $payment->id
+        ) {
+            throw new \RuntimeException(
+                'Stripe refund ID is already linked to a different local payment.'
+            );
+        }
         $createdTimestamp = is_numeric($refund->created ?? null)
             ? (int) $refund->created
             : time();

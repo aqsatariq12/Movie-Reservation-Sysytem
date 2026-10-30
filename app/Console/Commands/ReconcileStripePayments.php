@@ -298,6 +298,7 @@ class ReconcileStripePayments extends Command implements Isolatable
             ->select(
                 'refunds.id as refund_id',
                 'refunds.payment_id',
+                'refunds.retry_of_refund_id',
                 'refunds.amount_cents',
                 'refunds.reason',
                 'payments.provider_payment_id',
@@ -311,17 +312,7 @@ class ReconcileStripePayments extends Command implements Isolatable
             try {
                 // Preserve the existing idempotency key for late-payment refunds.
                 // Give each customer cancellation refund its own stable key.
-                $idempotencyKey = match ($pendingRefund->reason) {
-    'late_payment_after_booking_cancelled' =>
-        'late-refund-payment-' . $pendingRefund->payment_id,
-
-    'admin_booking_cancelled' =>
-        'admin-cancel-refund-' . $pendingRefund->refund_id,
-
-    default =>
-        'customer-cancel-refund-' . $pendingRefund->refund_id,
-};
-
+                $idempotencyKey = 'local-refund-' . $pendingRefund->refund_id;
                 // Safety check: the refund must be positive.
                 $refundAmount = (int) $pendingRefund->amount_cents;
 
@@ -352,7 +343,10 @@ class ReconcileStripePayments extends Command implements Isolatable
                 $refund = $stripe->createRefund(
                     $pendingRefund->provider_payment_id,
                     $refundAmount,
-                    $idempotencyKey
+                    $idempotencyKey,
+                    [
+                        'local_refund_id' => (string) $pendingRefund->refund_id,
+                    ]
                 );
 
                 $refundStatus = match ((string) $refund->status) {

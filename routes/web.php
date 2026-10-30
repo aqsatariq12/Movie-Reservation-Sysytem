@@ -23,6 +23,8 @@ use App\Models\Booking;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
+use App\Http\Controllers\Admin\RefundController;
+
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -134,6 +136,15 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/payments/{payment}', [AdminPaymentController::class, 'show'])
             ->whereNumber('payment')
             ->name('payments.show');
+
+        // Refund management (read-only list)
+        // Refund management
+        Route::get('/refunds', [RefundController::class, 'index'])
+            ->name('refunds.index');
+
+        Route::post('/refunds/{refund}/retry', [RefundController::class, 'retry'])
+            ->whereNumber('refund')
+            ->name('refunds.retry');
 
         // Staff & admin role management
         Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
