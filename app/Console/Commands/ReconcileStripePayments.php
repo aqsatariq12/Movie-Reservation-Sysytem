@@ -291,6 +291,7 @@ class ReconcileStripePayments extends Command implements Isolatable
             ->whereIn('refunds.reason', [
                 'late_payment_after_booking_cancelled',
                 'customer_booking_cancelled',
+                'admin_booking_cancelled',
             ])
             ->where('refunds.status', 'pending')
             ->whereNull('refunds.provider_refund_id')
@@ -310,10 +311,16 @@ class ReconcileStripePayments extends Command implements Isolatable
             try {
                 // Preserve the existing idempotency key for late-payment refunds.
                 // Give each customer cancellation refund its own stable key.
-                $idempotencyKey = $pendingRefund->reason
-                    === 'late_payment_after_booking_cancelled'
-                    ? 'late-refund-payment-' . $pendingRefund->payment_id
-                    : 'customer-cancel-refund-' . $pendingRefund->refund_id;
+                $idempotencyKey = match ($pendingRefund->reason) {
+    'late_payment_after_booking_cancelled' =>
+        'late-refund-payment-' . $pendingRefund->payment_id,
+
+    'admin_booking_cancelled' =>
+        'admin-cancel-refund-' . $pendingRefund->refund_id,
+
+    default =>
+        'customer-cancel-refund-' . $pendingRefund->refund_id,
+};
 
                 // Safety check: the refund must be positive.
                 $refundAmount = (int) $pendingRefund->amount_cents;

@@ -21,6 +21,7 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TicketController;
 use App\Models\Booking;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 
 Route::get('/', HomeController::class)->name('home');
 
@@ -38,7 +39,7 @@ Route::middleware(['auth', 'verified', 'customer'])->group(function () {
     Route::get('/my-bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
     Route::get('/my-bookings/{booking}/cancel', [BookingController::class, 'confirmCancel'])->name('bookings.cancel.confirm');
     Route::post('/my-bookings/{booking}/cancel', [BookingController::class, 'cancel'])
-    ->name('bookings.cancel');
+        ->name('bookings.cancel');
     Route::get('/my-bookings/{booking}/cancelled', [BookingController::class, 'cancelled'])->name('bookings.cancelled');
     // Logic phase: Route::post('/my-bookings/{booking}/cancel', ...)->name('bookings.cancel');
 
@@ -99,6 +100,28 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('showtimes.cancel');
         Route::post('/showtimes/{showtime}/cancel', [ShowtimeController::class, 'cancel'])
             ->name('showtimes.cancel.store');
+
+
+        // Booking management (read-only list, detail + CSV export)
+        // Booking management (read-only list, detail + CSV export)
+// Booking management
+Route::get('/bookings', [AdminBookingController::class, 'index'])
+    ->name('bookings.index');
+
+Route::get('/bookings/export', [AdminBookingController::class, 'export'])
+    ->name('bookings.export');
+
+Route::get('/bookings/{booking}/cancel', [AdminBookingController::class, 'confirmCancel'])
+    ->whereNumber('booking')
+    ->name('bookings.cancel');
+
+Route::post('/bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])
+    ->whereNumber('booking')
+    ->name('bookings.cancel.store');
+
+Route::get('/bookings/{booking}', [AdminBookingController::class, 'show'])
+    ->whereNumber('booking')
+    ->name('bookings.show');
 
         // Staff & admin role management
         Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
